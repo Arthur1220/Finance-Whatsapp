@@ -49,7 +49,7 @@ Existem duas maneiras de rodar a aplicação: localmente com um ambiente virtual
 
 1.  **Clone o repositório:**
     ```bash
-    git clone <url_do_seu_repositorio>
+    git clone https://github.com/Arthur1220/Finance-Whatsapp.git
     cd Finance-Whatsapp/backend
     ```
 
@@ -99,7 +99,7 @@ Existem duas maneiras de rodar a aplicação: localmente com um ambiente virtual
 
 1.  **Clone o repositório:**
     ```bash
-    git clone <url_do_seu_repositorio>
+    git clone https://github.com/Arthur1220/Finance-Whatsapp.git
     cd Finance-Whatsapp
     ```
 
