@@ -7,13 +7,13 @@ class MessageAdmin(admin.ModelAdmin):
     Personaliza a exibição do modelo Message no painel de administração do Django.
     """
     # Define as colunas exibidas na lista de mensagens.
-    list_display = ('sender', 'body', 'timestamp', 'created_at')
+    list_display = ('sender', 'body', 'direction', 'timestamp')
 
     # Adiciona uma barra de pesquisa para pesquisar nesses campos.
     search_fields = ('body', 'sender__username', 'sender__phone_number')
 
     # Adiciona uma barra lateral de filtro.
-    list_filter = ('timestamp', 'sender')
+    list_filter = ('timestamp', 'sender', 'direction')
 
     # Torna esses campos somente leitura na visualização de detalhes.
     readonly_fields = ('id', 'whatsapp_message_id', 'timestamp', 'created_at', 'updated_at')
