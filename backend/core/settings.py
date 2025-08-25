@@ -25,11 +25,17 @@ environ.Env.read_env(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # Variaveis de ambiente
+# --- Django ---
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
+
+# --- Meta ---
 META_VERIFY_TOKEN = env('META_VERIFY_TOKEN')
 META_ACCESS_TOKEN = env('META_ACCESS_TOKEN')
 META_PHONE_NUMBER_ID = env('META_PHONE_NUMBER_ID')
+
+# --- Gemini ---
+GEMINI_API_KEY = env('GEMINI_API_KEY')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'c0cee8abcb3a.ngrok-free.app']
 
@@ -58,6 +64,7 @@ INSTALLED_APPS = [
     # Meus aplicativos
     'users',
     'meta',
+    'ai',
 ]
 
 # Modelo de usuário

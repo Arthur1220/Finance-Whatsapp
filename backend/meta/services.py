@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from users.models import User
 from .models import Message
+from ai.services import AIService
 
 # Inicializa o logger para este módulo.
 logger = logging.getLogger(__name__)
@@ -96,7 +97,14 @@ class WebhookService:
             
             # Aqui é onde a lógica da IA será chamada no futuro.
             # Por enquanto, enviamos uma resposta de confirmação.
-            response_text = f"Olá, {user.first_name}! Sua mensagem foi recebida."
+            #response_text = f"Olá, {user.first_name}! Sua mensagem foi recebida."
+            #MessageService().send_text_message(user, response_text, replied_to=incoming_message)
+
+            # 1. Instancia o serviço da IA.
+            ai_service = AIService(user=user)
+            # 2. Pede para a IA gerar uma resposta.
+            response_text = ai_service.get_ai_response(latest_message=incoming_message)
+            # 3. Envia a resposta gerada pela IA.
             MessageService().send_text_message(user, response_text, replied_to=incoming_message)
 
         except IntegrityError:

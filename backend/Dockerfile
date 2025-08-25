@@ -12,7 +12,7 @@ WORKDIR /app
 #    Isso aproveita o cache do Docker. Se o requirements.txt não mudar,
 #    o Docker não reinstala tudo a cada build.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --force-reinstall --no-cache-dir -r requirements.txt
 
 # 5. Copiar o Código: Copia todo o código do seu projeto para o container.
 COPY . .

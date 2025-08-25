@@ -1,6 +1,6 @@
 import logging
 from celery import shared_task
-from . import services
+from .services import WebhookService
 
 # Boa prática: inicializar o logger para este módulo.
 logger = logging.getLogger(__name__)
@@ -18,7 +18,8 @@ def process_webhook_payload(self, payload: dict):
     try:
         # A lógica de negócio é delegada para a camada de serviço.
         # Isso mantém a tarefa simples e focada em sua responsabilidade: gerenciar a execução.
-        services.process_webhook_message(payload)
+        service_instance = WebhookService()
+        service_instance.process_payload(payload)
         
         logger.info(f"Task {task_id}: Successfully processed by the service layer.")
         return f"Task {task_id}: Payload processed successfully."
