@@ -12,9 +12,17 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     
-    # Permissão padrão para todo o ViewSet.
-    # AllowAny permite que qualquer pessoa, autenticada ou não, acesse os endpoints.
-    permission_classes = [permissions.AllowAny]
+    def get_permissions(self):
+        """
+        Assigns permissions based on the action.
+        """
+        if self.action in ['list', 'destroy', 'update', 'partial_update']:
+            self.permission_classes = [permissions.IsAdminUser]
+        elif self.action == 'me':
+            self.permission_classes = [permissions.IsAuthenticated]
+        else: # 'create'
+            self.permission_classes = [permissions.AllowAny]
+        return super().get_permissions()
 
     @action(detail=False, methods=['get'], url_path='me')
     def me(self, request):
