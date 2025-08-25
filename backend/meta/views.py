@@ -5,18 +5,21 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from datetime import datetime
+from django.utils import timezone
 import phonenumbers
 from phonenumbers import geocoder
 
-# Importe os modelos de ambos os apps
+# Import models from both apps
 from .models import Message
 from users.models import User
+
+# Import the service function to send WhatsApp messages
+from .services import send_whatsapp_message
 
 class MetaWebhookView(APIView):
     """
     View para receber e processar webhooks da API da Meta (WhatsApp).
     """
-    # A Meta não envia um token CSRF, e a autenticação é feita pelo token de verificação.
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
@@ -43,7 +46,6 @@ class MetaWebhookView(APIView):
         print("Received Webhook Payload:")
         print(json.dumps(data, indent=2))
 
-        # Estrutura de verificação para garantir que seja uma notificação de mensagem do WhatsApp.
         if (
             'object' in data and data.get('object') == 'whatsapp_business_account' and
             'entry' in data and data.get('entry')
@@ -52,18 +54,25 @@ class MetaWebhookView(APIView):
                 for change in entry.get('changes', []):
                     if change.get('field') == 'messages' and 'value' in change:
                         value = change['value']
-                        # Process each received message.
-                        # Processa cada mensagem recebida.
+                        
+                        # --- NOVA LÓGICA AQUI ---
+                        # Extract contact info at a higher level
+                        # Extraia as informações de contato em um nível superior
+                        contact_profile = value.get('contacts', [{}])[0].get('profile', {})
+                        contact_name = contact_profile.get('name', None)
+                        # --- FIM DA NOVA LÓGICA ---
+                        
                         for message_data in value.get('messages', []):
                             if message_data.get('type') == 'text':
-                                self.handle_text_message(message_data)
+                                # Pass the contact name to the handler function
+                                # Passe o nome do contato para a função de tratamento
+                                self.handle_text_message(message_data, contact_name)
         
         return Response(status=status.HTTP_200_OK)
 
-    def handle_text_message(self, message_data: dict):
+    def handle_text_message(self, message_data: dict, contact_name: str = None):
         """
         Processa e salva uma mensagem de texto recebida.
-        Ele encontra um usuário existente pelo número de telefone ou cria um novo.
         """
         sender_phone = message_data.get('from')
         whatsapp_id = message_data.get('id')
@@ -74,52 +83,68 @@ class MetaWebhookView(APIView):
             print("Incomplete message data received, skipping.")
             return
 
-        # Obtenha ou crie o usuário associado ao número de telefone
-        user, created = self.get_or_create_user_from_phone(sender_phone)
+        # Pass the contact name when creating the user
+        # Passe o nome do contato ao criar o usuário
+        user, created = self.get_or_create_user_from_phone(sender_phone, contact_name)
         if created:
-            print(f"New user created for phone number {sender_phone} with country {user.country_code}")
+            print(f"New user '{user.first_name}' created for phone number {sender_phone}")
 
-        # Converte o carimbo de data/hora em um objeto datetime
-        timestamp_dt = datetime.fromtimestamp(int(timestamp_str))
+        timestamp_dt = datetime.fromtimestamp(int(timestamp_str), tz=timezone.get_current_timezone())
 
         try:
-            # Cria a mensagem no banco de dados, ou a ignora se ela já existir
             Message.objects.get_or_create(
                 whatsapp_message_id=whatsapp_id,
                 defaults={
-                    'sender': user, # Link the message to the user object
+                    'sender': user,
                     'body': text_body,
                     'timestamp': timestamp_dt
                 }
             )
             print(f"Message from {sender_phone} (User: {user.username}) saved to database.")
-        except Exception as e:
-            print(f"Error saving message to database: {e}")
 
-    def get_or_create_user_from_phone(self, phone_number: str):
+            # Lógica de resposta
+            texto_de_resposta = f"Olá, {user.first_name}! Recebemos sua mensagem: '{text_body}'."
+            send_whatsapp_message(user, texto_de_resposta)
+
+        except Exception as e:
+            print(f"Error saving message to database or replying: {e}")
+
+    def get_or_create_user_from_phone(self, phone_number: str, full_name: str = None):
         """
-        Encontra um usuário pelo número de telefone ou cria um novo se não for encontrado.
-        Também analisa o número de telefone para extrair o código do país.
+        Encontra um usuário pelo número de telefone ou cria um novo, incluindo nome e sobrenome.
         """
+        first_name = None
+        last_name = ""
+        if full_name:
+            name_parts = full_name.split(' ', 1)
+            first_name = name_parts[0]
+            if len(name_parts) > 1:
+                last_name = name_parts[1]
+
         try:
-            # Use a biblioteca phonenumbers para analisar e obter informações da região
             parsed_number = phonenumbers.parse(f"+{phone_number}", None)
             country_code = geocoder.region_code_for_number(parsed_number)
-        except phonenumbers.phonenumberutil.NumberParseException:
+        except phonenumbers.phonumberutil.NumberParseException:
             country_code = None
         
-        # Usamos 'defaults' para fornecer valores apenas se um novo usuário estiver sendo criado
         user, created = User.objects.get_or_create(
             phone_number=phone_number,
             defaults={
-                'username': phone_number, # Use phone number as a unique username
+                'username': phone_number,
+                'first_name': first_name,
+                'last_name': last_name,
                 'country_code': country_code
             }
         )
 
+        # Logic to update the name if the user already exists and the name is available now
+        # Lógica para atualizar o nome se o usuário já existir e o nome estiver disponível agora
+        if not created and full_name and not user.first_name:
+            user.first_name = first_name
+            user.last_name = last_name
+            user.save()
+
         if created:
-            # Se um novo usuário foi criado, ele não tem uma senha utilizável.
-            # Isso os impede de fazer login por meio da autenticação padrão do Django.
             user.set_unusable_password()
             user.save()
 

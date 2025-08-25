@@ -31,7 +31,7 @@ META_VERIFY_TOKEN = env('META_VERIFY_TOKEN')
 META_ACCESS_TOKEN = env('META_ACCESS_TOKEN')
 META_PHONE_NUMBER_ID = env('META_PHONE_NUMBER_ID')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'c0cee8abcb3a.ngrok-free.app']
 
 
 # Definição da aplicação
