@@ -57,14 +57,12 @@ class AIService:
 
     def _get_conversation_history(self, latest_message: Message, limit: int = 10) -> list[Message]:
         """
-        Navega pela corrente de respostas para construir o histórico da conversa atual.
+        Busca todas as mensagens da conversa atual da última mensagem.
         """
-        history = [latest_message]
-        current_message = latest_message
-        while current_message.replied_to and len(history) < limit:
-            history.append(current_message.replied_to)
-            current_message = current_message.replied_to
-        return list(reversed(history))
+        # Acessa a conversa através da última mensagem e pega todas as mensagens dela.
+        conversation = latest_message.conversation
+        history = conversation.messages.order_by('timestamp')[:limit]
+        return list(history)
 
     def _build_final_prompt(self, system_prompt: str, history: list[Message]) -> str:
         """

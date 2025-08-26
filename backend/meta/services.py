@@ -11,7 +11,7 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from users.models import User
-from .models import Message
+from .models import Message, Conversation
 from ai.services import AIService
 
 # Inicializa o logger para este módulo.
@@ -64,6 +64,28 @@ class WebhookService:
             else:
                 self._handle_unsupported_message(message_data, contact_name, message_type, sender_wa_id)
 
+    def _get_or_create_active_conversation(self, user: User) -> Conversation:
+        """
+        Busca uma conversa ativa para o usuário ou cria uma nova.
+        Regra: Se a última mensagem foi há mais de 1 hora, fecha a conversa antiga e abre uma nova.
+        """
+        active_conversation = Conversation.objects.filter(user=user, status='ACTIVE').first()
+
+        if active_conversation:
+            last_message = active_conversation.messages.order_by('-timestamp').first()
+            # Se não há mensagens ou a última foi há muito tempo, fecha a conversa.
+            if last_message and (timezone.now() - last_message.timestamp > timezone.timedelta(hours=1)):
+                active_conversation.status = 'CLOSED'
+                active_conversation.end_time = timezone.now()
+                active_conversation.save()
+                active_conversation = None # Força a criação de uma nova
+
+        if not active_conversation:
+            active_conversation = Conversation.objects.create(user=user)
+            logger.info(f"Created new conversation {active_conversation.id} for user {user.id}")
+        
+        return active_conversation
+
     def _handle_text_message(self, message_data: dict, contact_name: Optional[str], sender_wa_id: str):
         """
         Processa uma mensagem de texto recebida.
@@ -78,6 +100,7 @@ class WebhookService:
             return
 
         user, _ = self._find_or_create_user(sender_wa_id, contact_name)
+        conversation = self._get_or_create_active_conversation(user)
         timestamp = datetime.fromtimestamp(int(timestamp_str), tz=timezone.get_current_timezone())
 
         original_message = None
@@ -88,8 +111,13 @@ class WebhookService:
             incoming_message, created = Message.objects.get_or_create(
                 whatsapp_message_id=whatsapp_id,
                 defaults={
-                    'sender': user, 'body': text_body, 'timestamp': timestamp,
-                    'message_type': 'text', 'direction': 'INBOUND', 'replied_to': original_message
+                    'conversation': conversation,
+                    'sender': user, 
+                    'body': text_body, 
+                    'timestamp': timestamp,
+                    'message_type': 'text', 
+                    'direction': 'INBOUND', 
+                    'replied_to': original_message
                 }
             )
             if created:

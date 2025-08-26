@@ -2,6 +2,24 @@ import uuid
 from django.db import models
 from django.conf import settings
 
+class Conversation(models.Model):
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('CLOSED', 'Closed'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conversations')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    summary = models.TextField(null=True, blank=True, help_text="Resumo gerado pela IA ao final da conversa.")
+
+    def __str__(self):
+        return f"Conversation with {self.user.username} started at {self.start_time}"
+
+    class Meta:
+        ordering = ['-start_time']
+
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     whatsapp_message_id = models.CharField(max_length=255, unique=True, db_index=True)
@@ -15,6 +33,7 @@ class Message(models.Model):
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, default='INBOUND')
     
     body = models.TextField(null=True, blank=True)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     message_type = models.CharField(max_length=50, default='text')
     timestamp = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)

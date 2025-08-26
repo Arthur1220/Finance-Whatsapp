@@ -37,7 +37,7 @@ META_PHONE_NUMBER_ID = env('META_PHONE_NUMBER_ID')
 # --- Gemini ---
 GEMINI_API_KEY = env('GEMINI_API_KEY')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'c0cee8abcb3a.ngrok-free.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
 
 
 # Definição da aplicação
