@@ -14,141 +14,103 @@ from users.models import User
 from .models import Message, Conversation
 from ai.services import AIService
 
-# Inicializa o logger para este módulo.
 logger = logging.getLogger(__name__)
 
-# --- Camada de Serviço para o Webhook ---
 
 class WebhookService:
-    """
-    Encapsula toda a lógica de negócio para processar webhooks do WhatsApp.
-    """
+    CONVERSATION_TIMEOUT_HOURS = 1
+
     def process_payload(self, payload: dict):
-        """
-        Ponto de entrada principal que orquestra o processamento do payload.
-        """
-        logger.info("WebhookService: Starting payload processing.")
-        
         if not (payload.get('object') == 'whatsapp_business_account' and payload.get('entry')):
-            logger.warning("WebhookService: Payload is not a valid WhatsApp business account notification.")
             return
-
         for entry in payload['entry']:
-            self._process_entry(entry)
-
-    def _process_entry(self, entry: dict):
-        """
-        Processa uma única 'entry' do payload, que pode conter múltiplas 'changes'.
-        """
-        for change in entry.get('changes', []):
-            if change.get('field') == 'messages' and 'value' in change:
-                self._process_change_value(change['value'])
+            for change in entry.get('changes', []):
+                if change.get('field') == 'messages' and 'value' in change:
+                    self._process_change_value(change['value'])
 
     def _process_change_value(self, value: dict):
-        """
-        Processa o objeto 'value' que contém informações de contatos e mensagens.
-        """
-        contact_info = value.get('contacts', [{}])[0]
-        contact_name = contact_info.get('profile', {}).get('name')
-        sender_wa_id = contact_info.get('wa_id')
-
-        if not sender_wa_id:
-            logger.warning("WebhookService: No sender WA ID found in contact info.")
+        if 'messages' not in value:
+            logger.info("WebhookService: Received a non-message event. Skipping.")
             return
 
         for message_data in value.get('messages', []):
+            sender_wa_id = message_data.get('from')
+            if not sender_wa_id:
+                continue
+
+            contact_info = value.get('contacts', [{}])[0]
+            contact_name = contact_info.get('profile', {}).get('name')
+
+            user, _ = self._find_or_create_user(sender_wa_id, contact_name)
+            conversation = self._get_or_create_active_conversation(user)
             message_type = message_data.get('type')
-            
+
             if message_type == 'text':
-                self._handle_text_message(message_data, contact_name, sender_wa_id)
+                self._handle_text_message(message_data, user, conversation)
             else:
-                self._handle_unsupported_message(message_data, contact_name, message_type, sender_wa_id)
+                self._handle_unsupported_message(message_data, user, conversation, message_type)
 
-    def _get_or_create_active_conversation(self, user: User) -> Conversation:
-        """
-        Busca uma conversa ativa para o usuário ou cria uma nova.
-        Regra: Se a última mensagem foi há mais de 1 hora, fecha a conversa antiga e abre uma nova.
-        """
-        active_conversation = Conversation.objects.filter(user=user, status='ACTIVE').first()
-
-        if active_conversation:
-            last_message = active_conversation.messages.order_by('-timestamp').first()
-            # Se não há mensagens ou a última foi há muito tempo, fecha a conversa.
-            if last_message and (timezone.now() - last_message.timestamp > timezone.timedelta(hours=1)):
-                active_conversation.status = 'CLOSED'
-                active_conversation.end_time = timezone.now()
-                active_conversation.save()
-                active_conversation = None # Força a criação de uma nova
-
-        if not active_conversation:
-            active_conversation = Conversation.objects.create(user=user)
-            logger.info(f"Created new conversation {active_conversation.id} for user {user.id}")
-        
-        return active_conversation
-
-    def _handle_text_message(self, message_data: dict, contact_name: Optional[str], sender_wa_id: str):
-        """
-        Processa uma mensagem de texto recebida.
-        """
+    def _handle_text_message(self, message_data: dict, user: User, conversation: Conversation):
         whatsapp_id = message_data.get('id')
         text_body = message_data.get('text', {}).get('body')
-        timestamp_str = message_data.get('timestamp')
+        timestamp = datetime.fromtimestamp(int(message_data.get('timestamp')), tz=timezone.get_current_timezone())
         replied_to_wamid = message_data.get('context', {}).get('id')
-
-        if not all([whatsapp_id, text_body, timestamp_str]):
-            logger.warning("WebhookService: Incomplete text message data received. Skipping.")
-            return
-
-        user, _ = self._find_or_create_user(sender_wa_id, contact_name)
-        conversation = self._get_or_create_active_conversation(user)
-        timestamp = datetime.fromtimestamp(int(timestamp_str), tz=timezone.get_current_timezone())
-
-        original_message = None
-        if replied_to_wamid:
-            original_message = Message.objects.filter(whatsapp_message_id=replied_to_wamid).first()
+        
+        original_message = Message.objects.filter(whatsapp_message_id=replied_to_wamid).first() if replied_to_wamid else None
 
         try:
             incoming_message, created = Message.objects.get_or_create(
                 whatsapp_message_id=whatsapp_id,
                 defaults={
-                    'conversation': conversation,
-                    'sender': user, 
-                    'body': text_body, 
-                    'timestamp': timestamp,
-                    'message_type': 'text', 
-                    'direction': 'INBOUND', 
-                    'replied_to': original_message
+                    'sender': user, 'conversation': conversation, 'body': text_body, 
+                    'timestamp': timestamp, 'message_type': 'text', 
+                    'direction': 'INBOUND', 'replied_to': original_message
                 }
             )
             if created:
-                logger.info(f"Inbound text message from user {user.id} saved (WAMID: {whatsapp_id}).")
+                logger.info(f"Inbound text message from user {user.id} saved to conversation {conversation.id}.")
             
-            # Aqui é onde a lógica da IA será chamada no futuro.
-            # Por enquanto, enviamos uma resposta de confirmação.
-            #response_text = f"Olá, {user.first_name}! Sua mensagem foi recebida."
-            #MessageService().send_text_message(user, response_text, replied_to=incoming_message)
-
-            # 1. Instancia o serviço da IA.
-            ai_service = AIService(user=user)
-            # 2. Pede para a IA gerar uma resposta.
-            response_text = ai_service.get_ai_response(latest_message=incoming_message)
-            # 3. Envia a resposta gerada pela IA.
+            # Instancia o serviço da IA com o usuário E a conversa
+            ai_service = AIService(user=user, conversation=conversation)
+            # O método principal agora é get_ai_plan
+            ai_plan = ai_service.get_ai_plan()
+            
+            response_text = ai_plan.get("response_text", "Desculpe, tive um problema para processar. Tente de novo?")
+            
+            # Envia a resposta de volta para o usuário
             MessageService().send_text_message(user, response_text, replied_to=incoming_message)
+            
+            action = ai_plan.get("conversation_action")
+            if action == "END_CONVERSATION":
+                conversation.status = 'CLOSED'
+                conversation.end_time = timezone.now()
+                conversation.save()
+                logger.info(f"Conversation {conversation.id} closed by AI action.")
 
         except IntegrityError:
             logger.warning(f"Inbound message with WAMID {whatsapp_id} already exists. Skipping.")
         except Exception:
             logger.error(f"WebhookService: Unexpected error processing text message for user {user.id}.", exc_info=True)
 
-    def _handle_unsupported_message(self, message_data: dict, contact_name: Optional[str], message_type: str, sender_wa_id: str):
-        """
-        Processa mensagens que não são de texto e envia uma resposta padrão.
-        """
-        user, _ = self._find_or_create_user(sender_wa_id, contact_name)
+    def _handle_unsupported_message(self, message_data: dict, user: User, conversation: Conversation, message_type: str):
         logger.info(f"Received an unsupported message of type '{message_type}' from user {user.id}.")
-
         response_text = "Desculpe, no momento nosso sistema só processa mensagens de texto."
         MessageService().send_text_message(user, response_text)
+
+    def _get_or_create_active_conversation(self, user: User) -> Conversation:
+        active_conversation = Conversation.objects.filter(user=user, status='ACTIVE').first()
+        if active_conversation:
+            last_message = active_conversation.messages.order_by('-timestamp').first()
+            if last_message and (timezone.now() - last_message.timestamp > timezone.timedelta(hours=self.CONVERSATION_TIMEOUT_HOURS)):
+                active_conversation.status = 'CLOSED'
+                active_conversation.end_time = timezone.now()
+                active_conversation.save()
+                logger.info(f"Closed inactive conversation {active_conversation.id} for user {user.id}")
+                active_conversation = None
+        if not active_conversation:
+            active_conversation = Conversation.objects.create(user=user)
+            logger.info(f"Created new conversation {active_conversation.id} for user {user.id}")
+        return active_conversation
 
     def _find_or_create_user(self, phone_number: str, full_name: Optional[str]) -> tuple[User, bool]:
         """
