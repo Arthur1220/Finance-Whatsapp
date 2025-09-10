@@ -14,6 +14,11 @@ from .models import AILog
 logger = logging.getLogger(__name__)
 
 class AIService:
+    """
+    Serviço responsável por analisar o texto das mensagens dos usuários.
+    Sua principal função é interpretar a intenção do usuário e extrair dados,
+    atuando como um filtro inteligente antes de qualquer ação do sistema.
+    """
     def __init__(self, user: User):
         self.user = user
         try:
@@ -21,57 +26,60 @@ class AIService:
         except Exception as e:
             logger.critical(f"Falha ao configurar a API do Gemini: {e}")
 
-    def extract_expense_data(self, message_text: str) -> Dict:
+    def interpret_message(self, message_text: str) -> Dict:
         """
-        Usa a IA para extrair dados de despesa (valor e descrição) de uma string de texto.
+        Usa a IA para interpretar a intenção do usuário e extrair dados, retornando um JSON.
         """
-        system_prompt = self._load_prompt_from_file('extrator_de_despesas_v1')
+        system_prompt = self._load_prompt_from_file('interprete_de_comandos_v1')
         if not system_prompt:
-            return {"amount": None, "description": None}
+            return {"intent": "indefinido"}
 
-        # Para extração, não precisamos de um histórico longo, apenas o texto da mensagem.
         final_prompt = f"{system_prompt}\n\nTexto do usuário: {message_text}\nSua saída:"
         
         response_str = self._call_gemini_api(final_prompt)
+        logger.info(f"--- RESPOSTA BRUTA DA IA ---\n{response_str}\n-----------------------------")
         
         try:
             json_match = re.search(r'\{.*\}', response_str, re.DOTALL)
             if json_match:
-                extracted_data = json.loads(json_match.group(0))
-                logger.info(f"Dados extraídos para o usuário {self.user.id}: {extracted_data}")
-                return extracted_data
-            else:
-                raise json.JSONDecodeError("Nenhum JSON encontrado na resposta da IA.")
+                return json.loads(json_match.group(0))
+            raise json.JSONDecodeError
         except (json.JSONDecodeError, AttributeError):
-            logger.error(f"Falha ao parsear JSON de extração para o usuário {self.user.id}. Raw: '{response_str}'")
-            return {"amount": None, "description": None}
-    
+            logger.error(f"Failed to parse JSON from AI response for user {self.user.id}. Raw: '{response_str}'")
+            return {"intent": "indefinido"}
+
     def _load_prompt_from_file(self, prompt_name: str) -> Optional[str]:
+        """
+        Carrega o conteúdo de um arquivo de prompt localizado na pasta 'ai/prompts'.
+        """
         try:
             file_path = Path(settings.BASE_DIR) / 'ai' / 'prompts' / f"{prompt_name}.txt"
             with open(file_path, 'r', encoding='utf-8') as f:
                 return f.read()
         except FileNotFoundError:
-            logger.error(f"Arquivo de prompt não encontrado: {prompt_name}.txt")
+            logger.error(f"Prompt file not found: {prompt_name}.txt")
             return None
 
     def _call_gemini_api(self, prompt: str) -> str:
+        """
+        Chama a API Gemini com o prompt fornecido e retorna a resposta como string.
+        """
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            model = genai.GenerativeModel('gemini-2.5-flash-lite')
+            start_time = time.time()
             response = model.generate_content(prompt)
-            # Logamos a interação aqui, pois é a única chamada
+            end_time = time.time()
+            duration_ms = max(0, int((end_time - start_time) * 1000))
+            # Criamos o log aqui para registrar toda e qualquer chamada à IA
             AILog.objects.create(
-                user=self.user, prompt_sent=prompt, response_received=response.text, duration_ms=0
+                user=self.user, 
+                prompt_sent=prompt, 
+                response_received=response.text, 
+                duration_ms=duration_ms
             )
+
+            logger.info(f"Main AI call for user {self.user.id} successful. Duration: {duration_ms}ms.")
             return response.text
-        except Exception as e:
-            logger.error(f"Erro ao chamar a API Gemini para o usuário {self.user.id}: {e}", exc_info=True)
-            return "{}" # Retorna um JSON vazio em caso de erro na API
-        """
-        Cria uma resposta de fallback segura caso a IA falhe ou não retorne um JSON válido.
-        """
-        return {
-            "user_intent": "fallback",
-            "response_text": text, # Para o caso da IA retornar texto em vez de JSON
-            "conversation_action": "CONTINUE_CONVERSATION"
-        }
+        except Exception:
+            logger.error(f"Error calling Gemini API for user {self.user.id}.", exc_info=True)
+            return "{}" # Retorna um JSON vazio em caso de erro

@@ -1,0 +1,54 @@
+Sua tarefa é analisar a mensagem do usuário e determinar sua principal intenção (intent). Responda APENAS com um objeto JSON com a chave "intent". Se a mensagem for um registro de despesa, extraia também o "amount" e "description".
+
+# Opções de "intent":
+- "registrar_despesa": O usuário está informando um gasto.
+- "pedir_ajuda": O usuário está confuso, pedindo ajuda ou comandos.
+- "pedir_comandos": O usuário quer ajuda com os possiveis comandos que pode utilizar.
+- "pedir_categorias": O usuário quer saber as categorias de despesas.
+- "pedir_saldo": O usuário está perguntando sobre saldo.
+- "pedir_extrato": O usuário está pedindo um extrato ou resumo.
+- "pedir_resumo": O usuário está pedindo um extrato ou resumo.
+- "saudacao"      
+- "agradecimento" 
+- "despedida" 
+- "indefinido": A intenção não é clara.
+
+### Exemplo 1
+Usuário: 25,90 almoço
+Sua Saída:
+{"intent": "registrar_despesa", "amount": 25.90, "description": "almoço"}
+
+### Exemplo 2
+Usuário: não sei como usar
+Sua Saída:
+{"intent": "pedir_ajuda"}
+
+### Exemplo 3
+Usuário: quais as categorias?
+Sua Saída:
+{"intent": "pedir_categorias"}
+
+### Exemplo 4
+Usuário: quanto eu tenho?
+Sua Saída:
+{"intent": "pedir_saldo"}
+
+### Exemplo 5 (Saudação)
+Usuário: oi, tudo bem?
+Sua Saída:
+{"intent": "saudacao"}
+
+### Exemplo 6 (Agradecimento)
+Usuário: muito obrigado!
+Sua Saída:
+{"intent": "agradecimento"}
+
+### Exemplo 7 (Despedida)
+Usuário: tchau, ate mais
+Sua Saída:
+{"intent": "despedida"}
+
+### Exemplo 8 (Indefinido)
+Usuário: tempo hoje
+Sua Saída:
+{"intent": "indefinido"}
