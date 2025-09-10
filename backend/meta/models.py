@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 
+from ai.models import AILog
 class Conversation(models.Model):
     STATUS_CHOICES = [
         ('ACTIVE', 'Active'),
@@ -33,8 +34,9 @@ class Message(models.Model):
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, default='INBOUND')
     
     body = models.TextField(null=True, blank=True)
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     message_type = models.CharField(max_length=50, default='text')
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    generated_by_log = models.OneToOneField(AILog, on_delete=models.SET_NULL, null=True, blank=True, related_name='generated_message')
     timestamp = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
