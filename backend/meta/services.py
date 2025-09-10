@@ -3,12 +3,12 @@ import json
 from datetime import datetime
 from typing import Optional
 
-import phonenumbers
-from phonenumbers import geocoder
 import requests
 from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
+import phonenumbers
+from phonenumbers import geocoder
 
 from users.models import User
 from .models import Message
@@ -52,12 +52,13 @@ class WebhookService:
         contact_name = contact_info.get('profile', {}).get('name')
         
         user, is_new_user = self._find_or_create_user(sender_wa_id, contact_name)
-        
-        # Salvamos a mensagem de entrada para ter o registro.
-        self._save_inbound_message(message_data, user)
+
+        incoming_message = self._save_inbound_message(message_data, user)
+        if not incoming_message:
+            return
         
         # Envia a resposta apropriada.
-        self._send_appropriate_reply(user, is_new_user)
+        self._send_appropriate_reply(user, is_new_user, incoming_message)
 
     def _save_inbound_message(self, message_data: dict, user: User) -> Optional[Message]:
         """
@@ -68,6 +69,11 @@ class WebhookService:
         text_body = message_data.get('text', {}).get('body')
         timestamp = datetime.fromtimestamp(int(message_data.get('timestamp')), tz=timezone.get_current_timezone())
         
+        replied_to_wamid = message_data.get('context', {}).get('id')
+        original_message = None
+        if replied_to_wamid:
+            original_message = Message.objects.filter(whatsapp_message_id=replied_to_wamid).first()
+
         try:
             message, created = Message.objects.get_or_create(
                 whatsapp_message_id=whatsapp_id,
@@ -75,7 +81,8 @@ class WebhookService:
                     'sender': user, 
                     'body': text_body, 
                     'timestamp': timestamp, 
-                    'direction': 'INBOUND'
+                    'direction': 'INBOUND',
+                    'replied_to': original_message
                 }
             )
             if created:
@@ -88,26 +95,27 @@ class WebhookService:
             logger.error(f"Error saving inbound message for user {user.id}.", exc_info=True)
             return None
 
-    def _send_appropriate_reply(self, user: User, is_new_user: bool):
+    def _send_appropriate_reply(self, user: User, is_new_user: bool, incoming_message: Message):
         """
         Decide qual mensagem de resposta enviar com base no status do usuário (novo ou existente).
         """
         if is_new_user:
             # Fluxo para um NOVO usuário.
             response_text = (
-                f"Olá, {user.first_name}! 👋 Bem-vindo(a) ao Finance-Whatsapp!\n\n"
-                "Este é o seu novo canal para registrar suas despesas de forma rápida e fácil. "
-                "Para começar, basta enviar uma mensagem no formato:\n\n"
-                "*VALOR DESCRIÇÃO*\n\nExemplo: *15,50 almoço no restaurante*"
+                f"Olá, {user.first_name}! 👋 Eu sou o Fin, seu assistente financeiro pessoal no Finance-Whatsapp.\n\n"
+                "Fico feliz em te ajudar a organizar suas finanças! Para começar, estou pronto para receber e registrar suas despesas. "
+                "Se tiver qualquer dúvida sobre como o sistema funciona, é só perguntar. 😉"
             )
         else:
             # Fluxo para um usuário EXISTENTE.
+            last_message_body = incoming_message.body if incoming_message else 'N/A'
             response_text = (
-                f"Olá, {user.first_name}! Recebemos sua mensagem e ela foi registrada. "
-                "Responderemos assim que possível. Obrigado!"
+                f"Olá, {user.first_name}! Recebemos sua mensagem e ela foi registrada.\n\n"
+                f"Conteúdo: \"{last_message_body}\"\n\n"
+                "Em breve ela será processada. Obrigado!"
             )
         
-        MessageService().send_text_message(user.phone_number, response_text)
+        MessageService().send_text_message(user, response_text, replied_to=incoming_message)
 
     def _find_or_create_user(self, phone_number: str, full_name: Optional[str]) -> tuple[User, bool]:
         """
@@ -145,20 +153,17 @@ class WebhookService:
 # SERVIÇO DE ENVIO DE MENSAGENS
 # ==============================================================================
 class MessageService:
-    """
-    Encapsula a lógica para se comunicar com a API da Meta APENAS para ENVIO.
-    Não salva mais as mensagens de saída.
-    """
     API_VERSION = 'v20.0'
     BASE_URL = 'https://graph.facebook.com'
 
-    def send_text_message(self, recipient_phone_number: str, text: str):
+    def send_text_message(self, recipient: User, text: str, replied_to: Optional[Message] = None) -> Optional[Message]:
         """
-        Envia uma mensagem de texto simples para um destinatário.
+        Envia uma mensagem de texto E salva um registro de SAÍDA (OUTBOUND) no banco.
+        Retorna o objeto da mensagem salva.
         """
-        if not recipient_phone_number:
-            logger.error("MessageService: Attempted to send message but recipient_phone_number is missing.")
-            return
+        if not recipient.phone_number:
+            logger.error(f"MessageService: Attempted to send message to user {recipient.id} without a phone number.")
+            return None
 
         phone_number_id = settings.META_PHONE_NUMBER_ID
         access_token = settings.META_ACCESS_TOKEN
@@ -166,17 +171,33 @@ class MessageService:
         
         headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
         payload = {
-            "messaging_product": "whatsapp", "to": recipient_phone_number,
+            "messaging_product": "whatsapp", "to": recipient.phone_number,
             "type": "text", "text": {"body": text}
         }
+        if replied_to:
+            payload['context'] = {'message_id': replied_to.whatsapp_message_id}
 
         try:
             response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=15)
             response.raise_for_status()
+            
             response_data = response.json()
             sent_message_id = response_data['messages'][0]['id']
-            logger.info(f"Message sent successfully to {recipient_phone_number}! WAMID: {sent_message_id}")
-            return response_data
+            logger.info(f"Message sent to user {recipient.id} via Meta API. WAMID: {sent_message_id}")
+            
+            outbound_message = Message.objects.create(
+                whatsapp_message_id=sent_message_id, 
+                sender=recipient,
+                replied_to=replied_to, 
+                direction='OUTBOUND',
+                body=text, 
+                timestamp=timezone.now()
+            )
+            logger.info(f"Outbound message for user {recipient.id} saved to database.")
+            return outbound_message
         except requests.exceptions.RequestException:
-            logger.error(f"MessageService: Failed to send message to {recipient_phone_number}.", exc_info=True)
+            logger.error(f"MessageService: Failed to send message to {recipient.phone_number}.", exc_info=True)
+            return None
+        except (KeyError, IndexError):
+            logger.error(f"MessageService: Unexpected response format from Meta API for user {recipient.id}.", exc_info=True)
             return None
