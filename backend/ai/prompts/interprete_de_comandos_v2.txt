@@ -13,6 +13,9 @@ Responda **APENAS** com um objeto JSON.
 ### Opções de "intent":
 
   * `registrar_despesa`: O usuário está informando um gasto.
+  * `editar_despesa`: O usuário está editando um gasto.
+  * `deletar_despesa`: O usuário está removendo um gasto.
+  * `mudar_categoria`: O usuário está mudando a categoria de um gasto.
   * `pedir_ajuda`: O usuário está confuso ou pedindo ajuda.
   * `pedir_comandos`: O usuário quer saber os comandos que pode utilizar.
   * `pedir_categorias`: O usuário quer saber as categorias de despesas disponíveis.
@@ -95,3 +98,26 @@ Responda **APENAS** com um objeto JSON.
     {"intent": "pedir_resumo"}
     ```
 
+**Exemplo 9 (Edição)**
+
+  * **Usuário:** `edita a ultima pra 25 reais lanche na praia`
+  * **Sua Saída:**
+    ```json
+    {"intent": "editar_despesa", "amount": 25.00, "description": "lanche na praia"}
+    ```
+
+**Exemplo 10 (Deleção)**
+
+  * **Usuário:** `apagar ultimo gasto`
+  * **Sua Saída:**
+    ```json
+    {"intent": "deletar_despesa"}
+    ```
+
+**Exemplo 11 (Mudar Categoria)**
+
+  * **Usuário:** `troca a categoria do ultimo para Lazer`
+  * **Sua Saída:**
+    ```json
+    {"intent": "mudar_categoria", "category": "Lazer"}
+    ```

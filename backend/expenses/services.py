@@ -1,6 +1,8 @@
 # backend/expenses/services.py
 import logging
 from decimal import Decimal
+from typing import Optional
+
 from users.models import User
 from .models import Expense, Category
 
@@ -25,7 +27,7 @@ def create_default_categories_for_user(user: User):
     for category_name in DEFAULT_CATEGORY_NAMES:
         Category.objects.get_or_create(user=user, name=category_name)
 
-    logger.info(f"Categorias padrão criadas para o novo usuário {user.id}")
+    logger.info(f"Standard categories created for user {user.id}")
 
 def create_expense_from_ai_plan(user: User, ai_plan: dict) -> Expense | None:
     """
@@ -47,5 +49,86 @@ def create_expense_from_ai_plan(user: User, ai_plan: dict) -> Expense | None:
         description=description,
         category=category
     )
-    logger.info(f"Nova despesa registrada para o usuário {user.id}: R${amount} em '{description}' (Cat: {category.name})")
+    logger.info(f"New expense registered for user {user.id}: R${amount} in '{description}' (Cat: {category.name})")
     return expense
+
+def delete_last_expense(user: User) -> Optional[Expense]:
+    """
+    Encontra e apaga a última despesa registrada por um usuário.
+    Retorna o objeto da despesa apagada, ou None se nenhuma for encontrada.
+    """
+    last_expense = Expense.objects.filter(user=user).order_by('-transaction_date').first()
+    
+    if last_expense:
+        logger.info(f"Deleting the last expense (ID: {last_expense.id}) for user {user.id}.")
+        last_expense.delete()
+        return last_expense
+
+    logger.warning(f"Attempted to delete, but no expense was found for user {user.id}.")
+    return None
+
+def edit_last_expense(user: User, ai_plan: dict) -> Optional[Expense]:
+    """
+    Encontra e edita a última despesa registrada com os novos dados do plano da IA.
+    Permite edições parciais (apenas valor, apenas descrição, ou ambos).
+    """
+    try:
+        last_expense = Expense.objects.filter(user=user).latest('transaction_date')
+    except Expense.DoesNotExist:
+        logger.warning(f"Attempted to edit, but no expense was found for user {user.id}.")
+        return None
+
+    new_amount = ai_plan.get("amount")
+    new_description = ai_plan.get("description")
+
+    if not new_amount and not new_description:
+        logger.warning(f"Attempted to edit expense {last_expense.id}, but no new data was provided.")
+        return None
+
+    fields_to_update = []
+    if new_amount:
+        last_expense.amount = Decimal(new_amount)
+        fields_to_update.append('amount')
+    
+    if new_description:
+        last_expense.description = new_description
+        fields_to_update.append('description')
+    
+    last_expense.save(update_fields=fields_to_update)
+
+    logger.info(f"Expense (ID: {last_expense.id}) successfully edited for user {user.id}. Updated fields: {fields_to_update}")
+    return last_expense
+
+def change_last_expense_category(user: User, ai_plan: dict) -> Optional[Expense]:
+    """
+    Encontra a última despesa e altera sua categoria para a nova categoria fornecida pelo plano da IA.
+    Se a categoria não existir para o usuário, ela é criada.
+    """
+    new_category_name = ai_plan.get("category")
+    if not new_category_name:
+        logger.warning(f"Attempted to change category, but no new category name was provided.")
+        return None
+
+    try:
+        last_expense = Expense.objects.filter(user=user).latest('transaction_date')
+    except Expense.DoesNotExist:
+        logger.warning(f"Attempted to change category, but no expense was found for user {user.id}.")
+        return None
+    
+    # Capitaliza o nome da categoria para manter um padrão (ex: "lazer" -> "Lazer")
+    new_category_name = new_category_name.capitalize()
+
+    # Busca a categoria pelo nome. Se não existir para este usuário, cria uma nova.
+    new_category, created = Category.objects.get_or_create(
+        user=user, 
+        name=new_category_name
+    )
+    if created:
+        logger.info(f"New category '{new_category_name}' created for user {user.id}.")
+
+    # Atribui a nova categoria e salva a alteração.
+    last_expense.category = new_category
+    last_expense.save(update_fields=['category'])
+
+    logger.info(f"Category of expense (ID: {last_expense.id}) changed to '{new_category_name}' for user {user.id}.")
+    return last_expense

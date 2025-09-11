@@ -13,7 +13,7 @@ from phonenumbers import geocoder
 from users.models import User
 from .models import Message
 from ai.services import AIService
-from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan
+from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category
 from . import replies
 
 logger = logging.getLogger(__name__)
@@ -128,6 +128,27 @@ class WebhookService:
             else:
                 response_text = replies.TEXT_REPLIES["indefinido"]
         
+        elif intent == "deletar_despesa":
+            deleted_expense = delete_last_expense(user)
+            if deleted_expense:
+                response_text = f"🗑️ A despesa anterior ('{deleted_expense.description}' de R${deleted_expense.amount:.2f}) foi apagada."
+            else:
+                response_text = "Você ainda não registrou nenhuma despesa para apagar."
+
+        elif intent == "editar_despesa":
+            edited_expense = edit_last_expense(user, ai_plan)
+            if edited_expense:
+                response_text = f"✅ Despesa atualizada para: R${edited_expense.amount:.2f} - '{edited_expense.description}'."
+            else:
+                response_text = "Não encontrei uma despesa para editar ou os dados fornecidos são inválidos."
+
+        elif intent == "mudar_categoria":
+            changed_expense = change_last_expense_category(user, ai_plan)
+            if changed_expense and changed_expense.category:
+                response_text = f"✅ Categoria da sua última despesa ('{changed_expense.description}') foi alterada para *{changed_expense.category.name}*."
+            else:
+                response_text = "Não consegui alterar a categoria. Verifique se você já registrou uma despesa ou se informou a nova categoria."
+
         elif intent == "pedir_categorias":
             response_text = replies.get_user_categories_reply(user)
 
@@ -135,7 +156,6 @@ class WebhookService:
             response_text = replies.get_monthly_summary_reply(user)
 
         elif intent in replies.TEXT_REPLIES:
-            # Se a intenção mapeia para uma resposta padrão
             response_text = replies.TEXT_REPLIES[intent]
         
         else: # Fallback para 'indefinido'
