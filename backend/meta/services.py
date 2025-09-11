@@ -13,7 +13,7 @@ from phonenumbers import geocoder
 from users.models import User
 from .models import Message
 from ai.services import AIService
-from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category
+from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category, create_new_category, delete_category_by_name
 from . import replies
 
 logger = logging.getLogger(__name__)
@@ -151,6 +151,23 @@ class WebhookService:
 
         elif intent == "pedir_categorias":
             response_text = replies.get_user_categories_reply(user)
+
+        elif intent == "criar_categoria":
+            category, created = create_new_category(user, ai_plan)
+            if category and created:
+                response_text = f"✅ Nova categoria '{category.name}' criada com sucesso!"
+            elif category and not created:
+                response_text = f"A categoria '{category.name}' já existe. 😉"
+            else:
+                response_text = "Não consegui entender o nome da categoria que você quer criar. Tente de novo, por favor."
+
+        elif intent == "deletar_categoria":
+            category_name = ai_plan.get("category", "desconhecida").capitalize()
+            was_deleted = delete_category_by_name(user, ai_plan)
+            if was_deleted:
+                response_text = f"🗑️ Categoria '{category_name}' apagada. As despesas que estavam nela foram movidas para 'Outros'."
+            else:
+                response_text = f"Não encontrei a categoria '{category_name}' para apagar."
 
         elif intent in ["pedir_extrato", "pedir_resumo", "pedir_saldo"]:
             response_text = replies.get_monthly_summary_reply(user)

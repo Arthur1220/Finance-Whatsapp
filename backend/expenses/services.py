@@ -132,3 +132,57 @@ def change_last_expense_category(user: User, ai_plan: dict) -> Optional[Expense]
 
     logger.info(f"Category of expense (ID: {last_expense.id}) changed to '{new_category_name}' for user {user.id}.")
     return last_expense
+
+def create_new_category(user: User, ai_plan: dict) -> tuple[Optional[Category], bool]:
+    """
+    Cria uma nova categoria de despesa para o usuário.
+    Retorna a categoria e um booleano indicando se foi criada.
+    """
+    category_name = ai_plan.get("category")
+    if not category_name:
+        return None, False
+
+    # Capitaliza o nome para manter um padrão
+    category_name = category_name.capitalize()
+    
+    category, created = Category.objects.get_or_create(
+        user=user,
+        name__iexact=category_name, # __iexact busca ignorando maiúsculas/minúsculas
+        defaults={'name': category_name}
+    )
+    
+    if created:
+        logger.info(f"Nova categoria '{category_name}' criada para o usuário {user.id}.")
+    else:
+        logger.info(f"Categoria '{category_name}' já existia para o usuário {user.id}.")
+
+    return category, created
+
+def delete_category_by_name(user: User, ai_plan: dict) -> bool:
+    """
+    Deleta uma categoria de despesa pelo nome.
+    Despesas que pertenciam a esta categoria são movidas para "Outros".
+    Retorna True se a categoria foi deletada, False caso contrário.
+    """
+    category_name = ai_plan.get("category")
+    if not category_name:
+        return False
+
+    try:
+        # Busca a categoria para deletar, ignorando maiúsculas/minúsculas
+        category_to_delete = Category.objects.get(user=user, name__iexact=category_name)
+        
+        # Garante que a categoria "Outros" exista antes de mover as despesas
+        other_category, _ = Category.objects.get_or_create(user=user, name="Outros")
+
+        # Move todas as despesas da categoria antiga para "Outros"
+        Expense.objects.filter(category=category_to_delete).update(category=other_category)
+        
+        # Deleta a categoria
+        category_to_delete.delete()
+        logger.info(f"Categoria '{category_name}' deletada para o usuário {user.id}. Despesas movidas para 'Outros'.")
+        return True
+
+    except Category.DoesNotExist:
+        logger.warning(f"Tentativa de deletar categoria '{category_name}' que não existe para o usuário {user.id}.")
+        return False

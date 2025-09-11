@@ -19,6 +19,8 @@ Responda **APENAS** com um objeto JSON.
   * `pedir_ajuda`: O usuário está confuso ou pedindo ajuda.
   * `pedir_comandos`: O usuário quer saber os comandos que pode utilizar.
   * `pedir_categorias`: O usuário quer saber as categorias de despesas disponíveis.
+  * `criar_categoria`: O usuário está criando uma nova categoria.
+  * `deletar_categoria`: O usuário está removendo uma categoria.
   * `pedir_saldo`: O usuário está perguntando sobre o saldo.
   * `pedir_extrato` ou `pedir_resumo`: O usuário está pedindo um resumo ou extrato dos gastos.
   * `saudacao`: O usuário está iniciando uma conversa.
@@ -120,4 +122,20 @@ Responda **APENAS** com um objeto JSON.
   * **Sua Saída:**
     ```json
     {"intent": "mudar_categoria", "category": "Lazer"}
+    ```
+
+**Exemplo 12 (Criar Categoria)**
+
+  * **Usuário:** `criar categoria faculdade`
+  * **Sua Saída:**
+    ```json
+    {"intent": "criar_categoria", "category": "Faculdade"}
+    ```
+
+**Exemplo 13 (Deletar Categoria)**
+
+  * **Usuário:** `apagar categoria lazer por favor`
+  * **Sua Saída:**
+    ```json
+    {"intent": "deletar_categoria", "category": "Lazer"}
     ```
