@@ -12,6 +12,7 @@ Responda **APENAS** com um objeto JSON.
 
 ### Opções de "intent":
 
+  * `registrar_renda`: O usuário está informando um ganho.
   * `registrar_despesa`: O usuário está informando um gasto.
   * `editar_despesa`: O usuário está editando um gasto.
   * `deletar_despesa`: O usuário está removendo um gasto.
@@ -138,4 +139,20 @@ Responda **APENAS** com um objeto JSON.
   * **Sua Saída:**
     ```json
     {"intent": "deletar_categoria", "category": "Lazer"}
+    ```
+
+**Exemplo 14 (Renda Fixa)**
+
+  * **Usuário:** `recebi 5000 do meu salario fixo`
+  * **Sua Saída:**
+    ```json
+    {"intent": "registrar_renda", "amount": 5000.00, "description": "salario", "income_type": "FIXA"}
+    ```
+
+**Exemplo 15 (Renda Variável)**
+
+  * **Usuário:** `ganhei 350 num freela`
+  * **Sua Saída:**
+    ```json
+    {"intent": "registrar_renda", "amount": 350.00, "description": "freela", "income_type": "VARIAVEL"}
     ```

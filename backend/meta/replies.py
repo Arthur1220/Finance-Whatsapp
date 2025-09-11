@@ -4,6 +4,7 @@ from django.db.models import Sum
 
 from expenses.models import Category, Expense 
 from users.models import User 
+from incomes.models import Income 
 
 # O dicionário com as respostas de texto fixas.
 TEXT_REPLIES = {
@@ -17,14 +18,11 @@ TEXT_REPLIES = {
         "Aqui estão os comandos que você pode usar:\n\n"
         "• `ajuda` ou `comandos`: Mostra esta mensagem de ajuda.\n"
         "• `categorias`: Explica como as categorias de despesas funcionam.\n"
-        "• `saldo`: Consulta o saldo atual (em breve).\n"
-        "• `extrato`: Mostra o extrato de despesas (em breve).\n"
-        "• `resumo`: Fornece um resumo das despesas (em breve).\n\n"
+        "• `saldo`: Consulta o saldo atual.\n"
+        "• `extrato`: Mostra o extrato de despesas.\n"
+        "• `resumo`: Fornece um resumo das despesas.\n\n"
         "Para registrar uma despesa, envie uma mensagem no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`)."
     ),
-    #"pedir_saldo": "A funcionalidade de consulta de saldo ainda está em desenvolvimento. Logo teremos novidades! 🚀",
-    #"pedir_extrato": "A funcionalidade de extrato ainda está em desenvolvimento. Logo teremos novidades! 🚀",
-    #"pedir_resumo": "A funcionalidade de resumo ainda está em desenvolvimento. Logo teremos novidades! 🚀",
     "indefinido": "Desculpe, não entendi. Para registrar uma despesa, por favor, envie no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`). Se precisar de ajuda, é só mandar `ajuda`.",
     "saudacao_novo_usuario": (
         "Olá, {}! 👋 Bem-vindo(a) ao Finance-Whatsapp!\n\n"
@@ -58,45 +56,39 @@ def get_user_categories_reply(user) -> str:
 
 def get_monthly_summary_reply(user: User) -> str:
     """
-    Busca todas as despesas do usuário no mês corrente, calcula os totais
-    e formata uma mensagem de resumo.
+    Busca todas as rendas e despesas do usuário no mês corrente e formata um resumo completo.
     """
-    # Pega o primeiro dia do mês e ano atuais
     now = timezone.now()
+    month_name = now.strftime("%B").capitalize()
     
-    # 1. Busca todas as despesas do usuário no mês e ano atuais.
-    expenses = Expense.objects.filter(
-        user=user,
-        transaction_date__year=now.year,
-        transaction_date__month=now.month
-    )
+    # 1. Busca e soma as rendas do mês
+    incomes = Income.objects.filter(user=user, transaction_date__year=now.year, transaction_date__month=now.month)
+    total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-    if not expenses.exists():
-        return "Você ainda não registrou nenhuma despesa este mês. Para começar, envie `VALOR DESCRIÇÃO`! 😉"
+    # 2. Busca e soma as despesas do mês
+    expenses = Expense.objects.filter(user=user, transaction_date__year=now.year, transaction_date__month=now.month)
+    total_expenses = expenses.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
-    # 2. Calcula o total gasto no mês.
-    total_spent = expenses.aggregate(total=Sum('amount'))['total'] or 0
-
-    # 3. Calcula o total gasto por categoria.
-    summary_by_category = expenses.values(
-        'category__name' # Agrupa pelo nome da categoria
-    ).annotate(
-        total_per_category=Sum('amount') # Soma os valores para cada grupo
-    ).order_by(
-        '-total_per_category' # Ordena da categoria mais cara para a mais barata
-    )
-
-    # 4. Monta a mensagem de resposta.
-    month_name = now.strftime("%B").capitalize() # Pega o nome do mês em português
+    # 3. Calcula o balanço e a porcentagem
+    balance = total_income - total_expenses
+    percent_spent = (total_expenses / total_income * 100) if total_income > 0 else 0
+    
+    # 4. Monta a mensagem de resposta
     response_lines = [
-        f"📊 *Resumo de Despesas de {month_name}*\n",
-        f"💰 *Total Gasto:* R$ {total_spent:.2f}\n",
-        "➡️ *Gastos por Categoria:*",
+        f"📊 *Resumo Financeiro de {month_name}*\n",
+        f"✅ *Total de Entradas:* R$ {total_income:.2f}",
+        f"❌ *Total de Saídas:* R$ {total_expenses:.2f}",
+        "---",
+        f"⚖️ *Balanço:* R$ {balance:.2f}",
+        f"📈 _Você gastou {percent_spent:.1f}% da sua renda este mês._\n"
     ]
 
-    for category_summary in summary_by_category:
-        category_name = category_summary['category__name'] or "Sem Categoria"
-        category_total = category_summary['total_per_category']
-        response_lines.append(f"• {category_name}: R$ {category_total:.2f}")
+    if expenses.exists():
+        response_lines.append("➡️ *Principais Categorias de Gasto:*")
+        summary_by_category = expenses.values('category__name').annotate(total=Sum('amount')).order_by('-total')[:3]
+        for category_summary in summary_by_category:
+            category_name = category_summary['category__name'] or "Sem Categoria"
+            category_total = category_summary['total']
+            response_lines.append(f"• {category_name}: R$ {category_total:.2f}")
 
     return "\n".join(response_lines)

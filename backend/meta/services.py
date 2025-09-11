@@ -15,6 +15,7 @@ from .models import Message
 from ai.services import AIService
 from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category, create_new_category, delete_category_by_name
 from . import replies
+from incomes.services import create_income_from_ai_plan
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,14 @@ class WebhookService:
         ai_plan = ai_service.interpret_message(text_body)
         intent = ai_plan.get("intent")
 
-        if intent == "registrar_despesa":
+        if intent == "registrar_renda":
+            income = create_income_from_ai_plan(user, ai_plan)
+            if income:
+                response_text = f"✅ Renda de R${income.amount:.2f} ('{income.description}') registrada com sucesso!"
+            else:
+                response_text = replies.TEXT_REPLIES["indefinido"]
+
+        elif intent == "registrar_despesa":
             expense = create_expense_from_ai_plan(user, ai_plan)
             if expense:
                 category_name = f"({expense.category.name})" if expense.category else ""

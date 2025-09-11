@@ -1,28 +1,30 @@
 # API Financeira com WhatsApp e IA Gemini
 
-Este projeto é o backend para um sistema de gestão financeira que se integra com a API Oficial do WhatsApp Business (Meta) e utiliza a IA do Google (Gemini) para processar e responder a mensagens de forma inteligente e assíncrona.
+Este projeto é o backend de um sistema de gestão financeira pessoal que permite aos usuários registrarem suas rendas e despesas através de mensagens simples no WhatsApp. A aplicação utiliza a IA do Google (Gemini) para interpretar a linguagem natural do usuário e se integra com a API Oficial do WhatsApp Business para uma comunicação fluida e assíncrona.
 
 ## Visão Geral da Arquitetura
 
-O sistema é construído sobre uma arquitetura de microsserviços desacoplada, orquestrada com Docker Compose. Ele foi projetado para ser escalável, resiliente e de fácil manutenção, separando claramente as responsabilidades de cada componente:
+O sistema é construído sobre uma arquitetura de serviços desacoplada, orquestrada com Docker Compose. Ele foi projetado para ser escalável, resiliente e de fácil manutenção, separando claramente as responsabilidades de cada componente:
 
 -   **App `core`**: Configurações centrais do Django e do Celery.
--   **App `users`**: Gerenciamento de usuários, autenticação via JWT e documentação da API.
--   **App `meta`**: Camada de comunicação com a API do WhatsApp. Responsável por receber webhooks e enviar mensagens.
--   **App `ai`**: O "cérebro" da aplicação. Responsável por carregar prompts, interagir com a API do Gemini e gerar respostas inteligentes.
--   **Celery & Redis**: Gerenciam a fila de tarefas assíncronas, garantindo que o processamento de webhooks seja instantâneo e robusto, sem risco de timeouts.
+-   **App `users`**: Gerenciamento de usuários e autenticação via JWT.
+-   **App `meta`**: Camada de comunicação com a API do WhatsApp. Responsável por receber webhooks e orquestrar as respostas.
+-   **App `expenses`**: Gerenciamento de despesas, incluindo modelos, serviços e lógica de categorização.
+-   **App `incomes`**: Gerenciamento de entradas de dinheiro (rendas).
+-   **App `ai`**: O "cérebro" da aplicação. Responsável por carregar prompts e usar a API do Gemini para interpretar as mensagens dos usuários.
+-   **Celery & Redis**: Gerenciam a fila de tarefas assíncronas, garantindo que o processamento dos webhooks seja instantâneo e robusto.
 
 ### Funcionalidades Implementadas
 
--   **Autenticação Segura via JWT** (`/api/login/`).
+-   **Registro de Rendas e Despesas via WhatsApp** usando linguagem natural.
+-   **IA para Interpretação de Intenção:** O Gemini classifica se o usuário quer registrar uma despesa, uma renda, pedir ajuda, etc.
+-   **Onboarding Automático:** Mensagens de boas-vindas personalizadas para novos usuários.
+-   **Resumo Financeiro Mensal:** Comando para receber um balanço de entradas, saídas e gastos por categoria.
+-   **Gerenciamento de Despesas:** Comandos para editar, deletar e recategorizar a última despesa registrada.
+-   **Gerenciamento de Categorias:** Comandos para criar e deletar categorias de despesa personalizadas.
 -   **Processamento Assíncrono de Webhooks** com Celery para alta performance.
--   **Integração com a IA Gemini** para geração de respostas contextuais.
--   **Histórico de Conversa** para alimentar a IA e manter o contexto.
--   **Criação Automática de Usuários** a partir de novas conversas no WhatsApp.
--   **Logs de Interação com a IA** para depuração e análise (`AILog`).
 -   **Documentação Interativa da API** via Swagger UI (`/api/docs/`).
 -   **Ambiente 100% Containerizado** com Docker e Docker Compose.
--   **Testes Automatizados** para garantir a estabilidade do código.
 
 ## Tech Stack
 
@@ -30,142 +32,142 @@ O sistema é construído sobre uma arquitetura de microsserviços desacoplada, o
 -   **Banco de Dados**: SQLite (desenvolvimento), preparado para PostgreSQL
 -   **Fila de Tarefas**: Celery
 -   **Message Broker**: Redis
--   **Servidor WSGI**: Gunicorn
 -   **Inteligência Artificial**: Google Gemini API
 -   **Containerização**: Docker, Docker Compose
 -   **Túnel de Desenvolvimento**: Ngrok
 
 ---
 
-## Pré-requisitos
-
--   Git
--   Python 3.11+ (`pip`, `venv`)
--   Docker e Docker Compose (para o método de container)
--   Ngrok (para conectar com a API da Meta em ambiente de desenvolvimento)
-
----
-
 ## Como Rodar o Projeto
 
-Você pode rodar a aplicação de duas maneiras: com Docker (método recomendado para consistência) ou localmente em um ambiente virtual (ótimo para depuração mais direta).
+O método recomendado para rodar este projeto é com Docker, pois ele gerencia todos os serviços (`web`, `worker`, `redis`) automaticamente.
 
-### Método 1: Rodar com Docker (Recomendado)
+### Pré-requisitos
 
-1.  **Clone o Repositório:**
-    ```bash
-    git clone <url_do_seu_repositorio>
-    cd Finance-Whatsapp
-    ```
+-   Git
+-   Docker
+-   Docker Compose
+-   Ngrok
 
-2.  **Configure as Variáveis de Ambiente:**
-    Crie e preencha o arquivo `backend/.env` com todas as suas chaves de API (`SECRET_KEY`, credenciais da `META` e do `GEMINI`). Veja o arquivo `.env.example` como referência.
+### 1. Clonar o Repositório
+```bash
+git clone <url_do_seu_repositorio>
+cd Finance-Whatsapp
+```
 
-3.  **Construa e Inicie os Containers:**
-    Na pasta raiz do projeto, execute:
-    ```bash
-    docker-compose up --build
-    ```
-    -   Este comando iniciará 3 serviços: `web` (Django), `worker` (Celery) e `redis`.
-    -   Use `docker-compose up -d` para rodar em segundo plano.
+### 2\. Configurar as Variáveis de Ambiente
 
-4.  **Prepare o Banco de Dados (Primeira Vez):**
-    Com os containers rodando, abra um **novo terminal** e execute:
-    ```bash
-    # Executar migrações
-    docker-compose exec web python manage.py migrate
-    # Criar um superusuário
-    docker-compose exec web python manage.py createsuperuser
-    ```
+Crie o arquivo `backend/.env` (você pode copiar de `backend/.env.example`, se houver) e preencha **todas** as variáveis com suas chaves de API:
 
-    Sua aplicação estará disponível em `http://localhost:8000`.
+```ini
+# Chave secreta do Django
+SECRET_KEY='sua-chave-secreta-do-django'
+DEBUG=True
 
-### Método 2: Rodar Localmente (Ambiente Virtual)
+# Credenciais da API da Meta (WhatsApp)
+META_VERIFY_TOKEN='CRIE_UM_TOKEN_SECRETO_PARA_O_WEBHOOK'
+META_ACCESS_TOKEN='COLE_SEU_TOKEN_DE_ACESSO_PERMANENTE_DA_META_AQUI'
+META_PHONE_NUMBER_ID='COLE_O_ID_DO_SEU_NUMERO_DE_TELEFONE_DO_WHATSAPP_AQUI'
 
-1.  **Clone o repositório e acesse a pasta do backend:**
-    ```bash
-    git clone <url_do_seu_repositorio>
-    cd Finance-Whatsapp/backend
-    ```
+# Credencial da API do Google Gemini
+GEMINI_API_KEY='COLE_SUA_CHAVE_DE_API_DO_GEMINI_AQUI'
+```
 
-2.  **Crie e ative o ambiente virtual:**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # macOS/Linux
-    # venv\Scripts\activate    # Windows
-    ```
+### 3\. Construir e Iniciar os Containers
 
-3.  **Instale as dependências:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+Na pasta raiz do projeto, execute o seguinte comando:
 
-4.  **Configure as Variáveis de Ambiente:**
-    Crie e preencha o arquivo `.env` na pasta `backend/` com suas credenciais.
+```bash
+docker-compose up --build
+```
 
-5.  **Inicie o Redis e o Celery:**
-    Para a aplicação funcionar localmente, você precisa do Redis rodando. Se você tem Docker, a maneira mais fácil é iniciar apenas o Redis: `docker-compose up -d redis`. Depois, inicie o worker do Celery em um terminal separado:
-    ```bash
-    # No terminal 1 (com venv ativado)
-    celery -A core worker -l info
-    ```
+  - Para rodar em segundo plano (detached mode), use `docker-compose up --build -d`.
 
-6.  **Prepare o Banco de Dados e Inicie o Servidor:**
-    Em outro terminal (com venv ativado), execute os comandos do Django:
-    ```bash
-    # No terminal 2
-    python manage.py migrate
-    python manage.py createsuperuser # Se for a primeira vez
-    python manage.py runserver
-    ```
+### 4\. Preparar o Banco de Dados (Primeira Vez)
 
-    Sua aplicação estará disponível em `http://localhost:8000`.
+Com os containers rodando, abra um **novo terminal** e execute os seguintes comandos:
 
----
+```bash
+# Executar as migrações para criar as tabelas
+docker-compose exec web python manage.py migrate
+
+# Criar um superusuário para acessar o Admin (`/admin/`)
+docker-compose exec web python manage.py createsuperuser
+```
+
+Sua aplicação estará disponível em `http://localhost:8000`.
+
+-----
+
+## Reinicialização Fácil do Sistema (Reset Completo)
+
+Se, durante o desenvolvimento, você precisar limpar completamente o banco de dados para testar o fluxo de "novo usuário" ou aplicar novas mudanças nos modelos, siga este procedimento.
+
+**Atenção:** Isso apagará todos os dados locais.
+
+Execute os comandos a partir da **pasta raiz** do projeto (`Finance-Whatsapp/`).
+
+```bash
+# 1. Pare e remova todos os containers
+docker-compose down
+
+# 2. Apague o banco de dados e as migrações antigas
+rm -f backend/db.sqlite3
+rm -rf backend/*/migrations/
+
+# 3. Crie os novos arquivos de migração (localmente)
+cd backend
+python manage.py makemigrations users meta ai expenses incomes
+cd ..
+
+# 4. Inicie os containers em segundo plano (o '-d' libera o terminal)
+docker-compose up --build -d
+
+# 5. Aplique as novas migrações dentro do container
+docker-compose exec web python manage.py migrate
+
+# 6. Crie um novo superusuário
+docker-compose exec web python manage.py createsuperuser
+```
+
+Após estes passos, seu sistema estará rodando com uma base de dados 100% limpa e com a estrutura mais recente.
+
+-----
 
 ## Conectando com o WhatsApp (Ngrok)
 
-Para que a API da Meta (que vive na internet) possa enviar webhooks para a sua aplicação (que está rodando na sua máquina local), você precisa de um túnel. O `ngrok` cria esse túnel de forma segura.
+Para que a API da Meta possa enviar webhooks para sua aplicação local, você precisa usar o `ngrok`.
 
-### 1. Instalação e Configuração
+1.  **Instale e Configure o Ngrok:** Siga as instruções no site oficial. Lembre-se de adicionar seu authtoken (conta gratuita) para sessões mais longas:
 
-Se você ainda não tem o `ngrok`, siga os passos de instalação para seu sistema (em WSL/Ubuntu, `sudo apt install ngrok`). Após instalar, conecte sua conta gratuita para obter sessões mais longas:
-```bash
-# Pegue seu token no dashboard do ngrok: [https://dashboard.ngrok.com/get-started/your-authtoken](https://dashboard.ngrok.com/get-started/your-authtoken)
-ngrok config add-authtoken SEU_TOKEN_AQUI
-```
+    ```bash
+    ngrok config add-authtoken SEU_TOKEN_AQUI
+    ```
 
-*Você só precisa fazer isso uma vez.*
+2.  **Execute:** Com sua aplicação rodando, abra um novo terminal e inicie o túnel:
 
-### 2\. Execução
-
-1.  **Garanta que sua aplicação Django esteja rodando**, seja via Docker ou localmente. Ela estará escutando na porta `8000`.
-2.  Em um **novo terminal**, inicie o `ngrok`:
     ```bash
     ngrok http 8000
     ```
-3.  O `ngrok` exibirá uma URL pública na linha `Forwarding`. Exemplo: `https://abcd-1234.ngrok.io`.
-4.  É esta URL `https://...` que você usará para configurar o webhook na plataforma da Meta, seguida do caminho do seu endpoint:
-    `https://abcd-1234.ngrok.io/api/meta/webhook/`
+
+3.  **Use a URL:** Copie a URL `https://...` fornecida pelo `ngrok` e use-a na configuração do seu webhook na plataforma da Meta, adicionando o caminho do seu endpoint no final:
+    `https://SUA-URL-DO-NGROK.ngrok-free.app/api/meta/webhook/`
+
+**Importante:** A cada reinício do `ngrok`, você precisa atualizar esta URL no painel da Meta.
 
 -----
 
 ## Executando os Testes
 
-Para garantir a integridade do código, rode a suíte de testes automatizados.
+Para garantir a integridade do código, rode a suíte de testes automatizados:
 
 ```bash
-# Rodando com Docker
 docker-compose exec web python manage.py test
-
-# Rodando localmente (na pasta backend/, com venv ativado)
-python manage.py test
 ```
 
 ## Principais Endpoints da API
 
   - `http://localhost:8000/admin/`: Painel de administração do Django.
   - `http://localhost:8000/api/docs/`: Documentação interativa da API (Swagger UI).
-  - `http://localhost:8000/api/login/`: `POST` com `username` e `password` para obter tokens JWT.
-  - `http://localhost:8000/api/users/`: Endpoint CRUD para gerenciamento de usuários.
+  - `http://localhost:8000/api/login/`: `POST` para obter tokens JWT (para futuras APIs).
   - `http://localhost:8000/api/meta/webhook/`: **(Apenas para a Meta)** Endpoint que recebe os webhooks do WhatsApp.
