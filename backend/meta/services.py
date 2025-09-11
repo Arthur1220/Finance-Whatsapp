@@ -131,6 +131,9 @@ class WebhookService:
         elif intent == "pedir_categorias":
             response_text = replies.get_user_categories_reply(user)
 
+        elif intent in ["pedir_extrato", "pedir_resumo", "pedir_saldo"]:
+            response_text = replies.get_monthly_summary_reply(user)
+
         elif intent in replies.TEXT_REPLIES:
             # Se a intenção mapeia para uma resposta padrão
             response_text = replies.TEXT_REPLIES[intent]

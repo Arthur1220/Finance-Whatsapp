@@ -86,3 +86,12 @@ Responda **APENAS** com um objeto JSON.
     ```json
     {"intent": "registrar_despesa", "amount": 75.00, "description": "presente", "category": "Outros"}
     ```
+
+**Exemplo 8 (Resumo)**
+
+  * **Usuário:** `como foram meus gastos esse mes?`
+  * **Sua Saída:**
+    ```json
+    {"intent": "pedir_resumo"}
+    ```
+
