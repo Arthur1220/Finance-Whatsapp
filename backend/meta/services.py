@@ -14,43 +14,9 @@ from users.models import User
 from .models import Message
 from ai.services import AIService
 from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan
+from . import replies
 
 logger = logging.getLogger(__name__)
-
-# ==============================================================================
-# --- MENSAGENS PADRÃO ---
-# ==============================================================================
-
-STANDARD_REPLIES = {
-    "pedir_ajuda": (
-        "Com certeza! Eu sou o Fin, seu assistente para registro de despesas. Veja o que você pode fazer:\n\n"
-        "1️⃣ *Registrar uma Despesa:*\nBasta me enviar uma mensagem no formato `VALOR DESCRIÇÃO`.\nExemplo: `25,50 almoço`\n\n"
-        "2️⃣ *Ver Comandos:*\nEnvie `comandos` ou `ajuda` a qualquer momento.\n\n"
-        "Posso te ajudar com mais alguma coisa? 😉"
-    ),
-    "pedir_comandos": (
-        "Aqui estão os comandos que você pode usar:\n\n"
-        "• `ajuda` ou `comandos`: Mostra esta mensagem de ajuda.\n"
-        "• `categorias`: Explica como as categorias de despesas funcionam.\n"
-        "• `saldo`: Consulta o saldo atual (em breve).\n"
-        "• `extrato`: Mostra o extrato de despesas (em breve).\n"
-        "• `resumo`: Fornece um resumo das despesas (em breve).\n\n"
-        "Para registrar uma despesa, envie uma mensagem no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`)."
-    ),
-    "pedir_categorias": "No momento, as categorias são definidas automaticamente, como Alimentação, Transporte, Lazer, etc. Em breve você poderá gerenciá-las!",
-    "pedir_saldo": "A funcionalidade de consulta de saldo ainda está em desenvolvimento. Logo teremos novidades! 🚀",
-    "pedir_extrato": "A funcionalidade de extrato ainda está em desenvolvimento. Logo teremos novidades! 🚀",
-    "pedir_resumo": "A funcionalidade de resumo ainda está em desenvolvimento. Logo teremos novidades! 🚀",
-    "indefinido": "Desculpe, não entendi. Para registrar uma despesa, por favor, envie no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`). Se precisar de ajuda, é só mandar `ajuda`.",
-    "saudacao_novo_usuario": (
-        "Olá, {}! 👋 Bem-vindo(a) ao Finance-Whatsapp!\n\n"
-        "Eu sou o Fin, e vou te ajudar a registrar suas despesas de forma rápida e fácil. Quer entender como funciono? Basta enviar uma mensagem como:\n\n"
-        "*Me explique o que pode fazer com o Fin*"
-    ),
-    "saudacao": "Olá! Sou o Fin, seu assistente de despesas. Como posso te ajudar hoje? Para registrar um gasto, é só me enviar `VALOR DESCRIÇÃO`.",
-    "agradecimento": "De nada! 😊 Se precisar de mais alguma coisa, é só chamar.",
-    "despedida": "Até a próxima! 👋",
-}
 
 # ==============================================================================
 # SERVIÇO DE PROCESSAMENTO DE WEBHOOKS
@@ -137,7 +103,7 @@ class WebhookService:
         """
         if is_new_user:
             # Se o usuário é novo, envia a saudação e encerra o fluxo.
-            response_text = STANDARD_REPLIES["saudacao_novo_usuario"].format(user.first_name)
+            response_text = replies.TEXT_REPLIES["saudacao_novo_usuario"].format(user.first_name)
             MessageService().send_text_message(user, response_text)
             return
 
@@ -160,14 +126,17 @@ class WebhookService:
                 category_name = f"({expense.category.name})" if expense.category else ""
                 response_text = f"✅ Despesa de R${expense.amount:.2f} em '{expense.description}' {category_name} registrada com sucesso!"
             else:
-                response_text = STANDARD_REPLIES["indefinido"]
+                response_text = replies.TEXT_REPLIES["indefinido"]
         
-        elif intent in STANDARD_REPLIES:
+        elif intent == "pedir_categorias":
+            response_text = replies.get_user_categories_reply(user)
+
+        elif intent in replies.TEXT_REPLIES:
             # Se a intenção mapeia para uma resposta padrão
-            response_text = STANDARD_REPLIES[intent]
+            response_text = replies.TEXT_REPLIES[intent]
         
         else: # Fallback para 'indefinido'
-            response_text = STANDARD_REPLIES["indefinido"]
+            response_text = replies.TEXT_REPLIES["indefinido"]
 
         MessageService().send_text_message(user, response_text, replied_to=incoming_message)
 
