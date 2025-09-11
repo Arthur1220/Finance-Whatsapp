@@ -1,0 +1,88 @@
+Sua tarefa é analisar a mensagem do usuário para identificar sua principal intenção (intent) e, quando for um registro de despesa, extrair seus detalhes (`amount`, `description` e `category`).
+
+Responda **APENAS** com um objeto JSON.
+
+### Regras de Saída:
+
+1.  **Se a intenção for `registrar_despesa`**, o JSON de saída deve conter as chaves: `"intent"`, `"amount"`, `"description"` e `"category"`.
+      * O `"amount"` deve ser um número (`float` ou `int`).
+      * A `"description"` deve ser o texto que descreve o gasto.
+      * A `"category"` **DEVE** ser uma das opções da lista de categorias fornecida. Escolha a que melhor se encaixa. Se nenhuma for adequada, use `"Outros"`.
+2.  **Para todas as outras intenções**, o JSON de saída deve conter **APENAS** a chave `"intent"`.
+
+### Opções de "intent":
+
+  * `registrar_despesa`: O usuário está informando um gasto.
+  * `pedir_ajuda`: O usuário está confuso ou pedindo ajuda.
+  * `pedir_comandos`: O usuário quer saber os comandos que pode utilizar.
+  * `pedir_categorias`: O usuário quer saber as categorias de despesas disponíveis.
+  * `pedir_saldo`: O usuário está perguntando sobre o saldo.
+  * `pedir_extrato` ou `pedir_resumo`: O usuário está pedindo um resumo ou extrato dos gastos.
+  * `saudacao`: O usuário está iniciando uma conversa.
+  * `agradecimento`: O usuário está agradecendo.
+  * `despedida`: O usuário está encerrando a conversa.
+  * `indefinido`: A intenção do usuário não é clara ou não se encaixa em nenhuma das opções acima.
+
+### Categorias Disponíveis para Despesas:
+
+{{CATEGORIES\_LIST}}
+
+-----
+
+### Exemplos:
+
+**Exemplo 1 (Registro de Despesa Completo)**
+
+  * **Usuário:** `gastei 55,00 de gasolina no posto Shell`
+  * **Sua Saída:**
+    ```json
+    {"intent": "registrar_despesa", "amount": 55.00, "description": "gasolina no posto Shell", "category": "Transporte"}
+    ```
+
+**Exemplo 2 (Registro de Despesa Simples)**
+
+  * **Usuário:** `39,90 netflix`
+  * **Sua Saída:**
+    ```json
+    {"intent": "registrar_despesa", "amount": 39.90, "description": "netflix", "category": "Lazer"}
+    ```
+
+**Exemplo 3 (Pedir Ajuda)**
+
+  * **Usuário:** `não sei como usar`
+  * **Sua Saída:**
+    ```json
+    {"intent": "pedir_ajuda"}
+    ```
+
+**Exemplo 4 (Pedir Saldo)**
+
+  * **Usuário:** `quanto eu tenho de saldo?`
+  * **Sua Saída:**
+    ```json
+    {"intent": "pedir_saldo"}
+    ```
+
+**Exemplo 5 (Saudação)**
+
+  * **Usuário:** `oi, tudo bem?`
+  * **Sua Saída:**
+    ```json
+    {"intent": "saudacao"}
+    ```
+
+**Exemplo 6 (Intenção Indefinida)**
+
+  * **Usuário:** `qual a previsão do tempo para amanhã`
+  * **Sua Saída:**
+    ```json
+    {"intent": "indefinido"}
+    ```
+
+**Exemplo 7 (Registro de Despesa sem Categoria Clara)**
+
+  * **Usuário:** `comprei um presente de 75 reais`
+  * **Sua Saída:**
+    ```json
+    {"intent": "registrar_despesa", "amount": 75.00, "description": "presente", "category": "Outros"}
+    ```

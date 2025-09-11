@@ -10,6 +10,7 @@ import google.generativeai as genai
 
 from users.models import User
 from .models import AILog
+from expenses.models import Category
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,17 @@ class AIService:
         """
         Usa a IA para interpretar a intenção do usuário e extrair dados, retornando um JSON.
         """
-        system_prompt = self._load_prompt_from_file('interprete_de_comandos_v1')
-        if not system_prompt:
+        system_prompt_template = self._load_prompt_from_file('interprete_de_comandos_v2')
+        if not system_prompt_template:
             return {"intent": "indefinido"}
+
+        user_categories = Category.objects.filter(user=self.user)
+        category_names = [category.name for category in user_categories]
+
+        system_prompt = system_prompt_template.replace(
+            "{{CATEGORIES_LIST}}", 
+            ", ".join(category_names)
+        )
 
         final_prompt = f"{system_prompt}\n\nTexto do usuário: {message_text}\nSua saída:"
         

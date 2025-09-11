@@ -13,6 +13,7 @@ from phonenumbers import geocoder
 from users.models import User
 from .models import Message
 from ai.services import AIService
+from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ class WebhookService:
         if is_new_user:
             # Se o usuário é novo, envia a saudação e encerra o fluxo.
             response_text = STANDARD_REPLIES["saudacao_novo_usuario"].format(user.first_name)
-            MessageService().send_text_message(user.phone_number, response_text)
+            MessageService().send_text_message(user, response_text)
             return
 
         # Para usuários existentes, o fluxo completo de análise acontece.
@@ -154,10 +155,12 @@ class WebhookService:
         intent = ai_plan.get("intent")
 
         if intent == "registrar_despesa":
-            # Lógica para salvar a despesa
-            amount = ai_plan.get("amount")
-            description = ai_plan.get("description")
-            response_text = f"✅ (Simulação) Despesa de R${amount:.2f} em '{description}' seria registrada!"
+            expense = create_expense_from_ai_plan(user, ai_plan)
+            if expense:
+                category_name = f"({expense.category.name})" if expense.category else ""
+                response_text = f"✅ Despesa de R${expense.amount:.2f} em '{expense.description}' {category_name} registrada com sucesso!"
+            else:
+                response_text = STANDARD_REPLIES["indefinido"]
         
         elif intent in STANDARD_REPLIES:
             # Se a intenção mapeia para uma resposta padrão
@@ -172,7 +175,6 @@ class WebhookService:
         """
         Encontra ou cria um usuário, retornando o objeto e um booleano 'created'.
         """
-        # (Este método não muda, sua lógica está perfeita)
         first_name = ""
         last_name = ""
         if full_name:
@@ -197,6 +199,11 @@ class WebhookService:
             user.set_unusable_password()
             user.save()
             logger.info(f"Created new user {user.id} for phone number {phone_number}.")
+            
+            create_default_categories_for_user(user)
+            logger.info(f"Default categories created for new user {user.id}.")
+        else:
+            logger.info(f"Found existing user {user.id} for phone number {phone_number}.")
         
         return user, created
 

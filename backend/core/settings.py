@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'users',
     'meta',
     'ai',
+    'expenses',
 ]
 
 # Modelo de usuário
