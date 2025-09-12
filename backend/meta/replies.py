@@ -9,29 +9,54 @@ from incomes.models import Income
 # O dicionário com as respostas de texto fixas.
 TEXT_REPLIES = {
     "pedir_ajuda": (
-        "Com certeza! Eu sou o Fin, seu assistente para registro de despesas. Veja o que você pode fazer:\n\n"
-        "1️⃣ *Registrar uma Despesa:*\nBasta me enviar uma mensagem no formato `VALOR DESCRIÇÃO`.\nExemplo: `25,50 almoço`\n\n"
-        "2️⃣ *Ver Comandos:*\nEnvie `comandos` ou `ajuda` a qualquer momento.\n\n"
-        "Posso te ajudar com mais alguma coisa? 😉"
+        "Olá! Eu sou o Fin, seu assistente financeiro. Minha principal função é te ajudar a registrar suas finanças de forma simples. Veja como posso te ajudar:\n\n"
+        "*🎯 Para Organizar seus Gastos:*\n"
+        "A qualquer momento, me envie uma mensagem com um valor e uma descrição, e eu registro para você! Eu tento entender o que você escreve, por exemplo:\n"
+        "  - `15,50 almoço no trabalho`\n"
+        "  - `recebi 1200 de um freela`\n"
+        "  - `paguei 350 no aluguel com pix`\n\n"
+        "*✍️ Para Gerenciar seus Dados:*\n"
+        "Cometeu um erro? É fácil de corrigir!\n"
+        "  - `editar ultima 16,00 café da manhã`\n"
+        "  - `apagar ultima despesa`\n"
+        "  - `mudar categoria do ultimo para Lazer`\n\n"
+        "*📊 Para Ver seus Relatórios:*\n"
+        "Quer saber como andam suas finanças?\n"
+        "  - `resumo do mês`\n\n"
+        "Se quiser uma lista rápida de todos os comandos, é só me enviar a palavra `comandos`. 😉"
     ),
     "pedir_comandos": (
-        "Aqui estão os comandos que você pode usar:\n\n"
-        "• `ajuda` ou `comandos`: Mostra esta mensagem de ajuda.\n"
-        "• `categorias`: Explica como as categorias de despesas funcionam.\n"
-        "• `saldo`: Consulta o saldo atual.\n"
-        "• `extrato`: Mostra o extrato de despesas.\n"
-        "• `resumo`: Fornece um resumo das despesas.\n\n"
-        "Para registrar uma despesa, envie uma mensagem no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`)."
+        "Aqui está a lista de comandos que eu entendo:\n\n"
+        "*Registros:*\n"
+        "• `[VALOR] [DESCRIÇÃO] [FORMA DE PAGAMENTO (opcional)]` - Registra uma despesa.\n"
+        "• `recebi [VALOR] de [DESCRIÇÃO] [fixo/variavel (opcional)]` - Registra uma renda.\n\n"
+        "*Gerenciamento do Último Registro:*\n"
+        "• `editar ultima [NOVO VALOR] [NOVA DESCRIÇÃO]`\n"
+        "• `apagar ultima` ou `deletar ultima`\n"
+        "• `mudar categoria para [NOME DA CATEGORIA]`\n\n"
+        "*Gerenciamento de Categorias:*\n"
+        "• `criar categoria [NOME]`\n"
+        "• `apagar categoria [NOME]`\n"
+        "• `minhas categorias`\n\n"
+        "*Relatórios:*\n"
+        "• `resumo do mês`\n"
+        "• `extrato`\n"
+        "• `saldo`"
     ),
-    "indefinido": "Desculpe, não entendi. Para registrar uma despesa, por favor, envie no formato: `VALOR DESCRIÇÃO` (ex: `15,90 padaria`). Se precisar de ajuda, é só mandar `ajuda`.",
+    "indefinido": (
+        "Desculpe, não entendi o que você quis dizer. 🤔\n\n"
+        "Lembre-se que posso registrar despesas e rendas. Se precisar de ajuda com os comandos, é só me enviar a palavra `ajuda`."
+    ),
     "saudacao_novo_usuario": (
         "Olá, {}! 👋 Bem-vindo(a) ao Finance-Whatsapp!\n\n"
-        "Eu sou o Fin, e vou te ajudar a registrar suas despesas de forma rápida e fácil. Quer entender como funciono? Basta enviar uma mensagem como:\n\n"
-        "*Me explique o que pode fazer com o Fin*"
+        "Eu sou o Fin, seu assistente financeiro pessoal. Minha missão é te ajudar a organizar suas finanças de forma simples, diretamente pelo WhatsApp.\n\n"
+        "Para começar, que tal registrar sua primeira despesa? É só me enviar uma mensagem como:\n\n"
+        "*15,50 almoço no restaurante*\n\n"
+        "A qualquer momento, me envie `ajuda` para ver tudo que posso fazer!"
     ),
-    "saudacao": "Olá! Sou o Fin, seu assistente de despesas. Como posso te ajudar hoje? Para registrar um gasto, é só me enviar `VALOR DESCRIÇÃO`.",
+    "saudacao": "Olá, {}! 👋 Como posso te ajudar com suas finanças hoje?",
     "agradecimento": "De nada! 😊 Se precisar de mais alguma coisa, é só chamar.",
-    "despedida": "Até a próxima! 👋",
+    "despedida": "Até mais! Se precisar de algo, estarei por aqui. 👋",
 }
 
 def get_user_categories_reply(user) -> str:
