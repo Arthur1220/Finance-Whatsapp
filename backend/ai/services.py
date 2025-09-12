@@ -105,6 +105,15 @@ class AIService:
         system_prompt = prompt_template.replace("{{SUMMARY_DATA}}", data_str)
         
         # Usamos o _build_final_prompt sem histórico para uma tarefa "one-shot"
-        final_prompt = self._build_final_prompt(system_prompt, [])
+        final_prompt = self._build_final_prompt_without_history(system_prompt)
         
         return self._call_gemini_api(final_prompt)
+    
+    def _build_final_prompt_without_history(self, system_prompt: str) -> str:
+        """
+        Constrói um prompt final para a IA sem incluir um histórico de conversa.
+        Usado para tarefas "one-shot" como a geração de insights.
+        """
+        system_prompt_with_context = f"{system_prompt}\nInformações do usuário atual: Nome={self.user.first_name or 'não informado'}."
+        final_prompt = f"{system_prompt_with_context}\n\n# RESPOSTA FINAL GERADA:"
+        return final_prompt

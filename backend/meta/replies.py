@@ -1,6 +1,7 @@
 from typing import List
 from django.utils import timezone
 from django.db.models import Sum
+from decimal import Decimal
 
 from expenses.models import Category, Expense 
 from users.models import User 

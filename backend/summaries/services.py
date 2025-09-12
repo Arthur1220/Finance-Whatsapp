@@ -34,9 +34,9 @@ def generate_or_get_monthly_summary(user: User, force_regenerate: bool = False) 
     total_expenses = expenses_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
     balance = total_income - total_expenses
 
-    summary_by_category = Expense.values('category__name').annotate(total=Sum('amount')).order_by('-total')
+    summary_by_category = expenses_qs.values('category__name').annotate(total=Sum('amount')).order_by('-total')
     summary_by_payment = expenses_qs.values('payment_method__name').annotate(total=Sum('amount')).order_by('-total')
-
+    
     # 3. Prepara os dados e chama a IA para gerar os insights.
     ai_service = AIService(user=user)
     insights_data = {
