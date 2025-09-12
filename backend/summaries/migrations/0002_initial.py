@@ -10,14 +10,18 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('ai', '0001_initial'),
+        ('summaries', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ailog',
+            model_name='monthlysummary',
             name='user',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='summaries', to=settings.AUTH_USER_MODEL),
+        ),
+        migrations.AlterUniqueTogether(
+            name='monthlysummary',
+            unique_together={('user', 'month', 'year')},
         ),
     ]

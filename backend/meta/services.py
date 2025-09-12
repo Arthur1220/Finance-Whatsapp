@@ -14,8 +14,9 @@ from users.models import User
 from .models import Message
 from ai.services import AIService
 from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category, create_new_category, delete_category_by_name
-from . import replies
+from summaries.services import generate_or_get_monthly_summary # Novo import
 from incomes.services import create_income_from_ai_plan
+from . import replies
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +178,11 @@ class WebhookService:
             else:
                 response_text = f"Não encontrei a categoria '{category_name}' para apagar."
 
-        elif intent in ["pedir_extrato", "pedir_resumo", "pedir_saldo"]:
+        elif intent in ["pedir_extrato", "pedir_saldo"]:
+            summary = generate_or_get_monthly_summary(user)
+            response_text = summary.summary_text
+        
+        elif intent == "pedir_resumo":
             response_text = replies.get_monthly_summary_reply(user)
 
         elif intent in replies.TEXT_REPLIES:

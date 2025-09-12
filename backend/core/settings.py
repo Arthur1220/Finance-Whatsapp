@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from celery.schedules import crontab
 from pathlib import Path
 from datetime import timedelta
 import environ
@@ -67,6 +68,7 @@ INSTALLED_APPS = [
     'ai',
     'expenses',
     'incomes',
+    'summaries',
 ]
 
 # Modelo de usuário
@@ -217,3 +219,10 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+CELERY_BEAT_SCHEDULE = {
+    'generate-monthly-summaries': {
+        'task': 'summaries.tasks.generate_monthly_summaries_for_all_users',
+        'schedule': crontab(day_of_month=1, hour=8, minute=0), # Roda no dia 1 de cada mês, às 8h
+    },
+}

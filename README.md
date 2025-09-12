@@ -78,7 +78,7 @@ GEMINI_API_KEY='COLE_SUA_CHAVE_DE_API_DO_GEMINI_AQUI'
 Na pasta raiz do projeto, execute o seguinte comando:
 
 ```bash
-docker-compose up --build
+docker-compose up --build -d
 ```
 
   - Para rodar em segundo plano (detached mode), use `docker-compose up --build -d`.
@@ -117,7 +117,7 @@ rm -rf backend/*/migrations/
 
 # 3. Crie os novos arquivos de migração (localmente)
 cd backend
-python manage.py makemigrations users meta ai expenses incomes
+python manage.py makemigrations users meta ai expenses incomes summaries
 cd ..
 
 # 4. Inicie os containers em segundo plano (o '-d' libera o terminal)
