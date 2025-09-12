@@ -19,6 +19,7 @@ def generate_or_get_monthly_summary(user: User, force_regenerate: bool = False) 
     month, year = now.month, now.year
 
     # 1. Lógica de Cache que você pediu
+    expenses_qs = Expense.objects.filter(user=user, transaction_date__year=year, transaction_date__month=month)
     last_expense = Expense.objects.filter(user=user, transaction_date__year=year, transaction_date__month=month).order_by('-transaction_date').first()
     summary = MonthlySummary.objects.filter(user=user, month=month, year=year).first()
 
@@ -30,10 +31,11 @@ def generate_or_get_monthly_summary(user: User, force_regenerate: bool = False) 
     logger.info(f"Gerando novo resumo para o usuário {user.id} para {month}/{year}.")
 
     total_income = Income.objects.filter(user=user, transaction_date__year=year, transaction_date__month=month).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-    total_expenses = Expense.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    total_expenses = expenses_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
     balance = total_income - total_expenses
 
     summary_by_category = Expense.values('category__name').annotate(total=Sum('amount')).order_by('-total')
+    summary_by_payment = expenses_qs.values('payment_method__name').annotate(total=Sum('amount')).order_by('-total')
 
     # 3. Prepara os dados e chama a IA para gerar os insights.
     ai_service = AIService(user=user)
@@ -44,6 +46,10 @@ def generate_or_get_monthly_summary(user: User, force_regenerate: bool = False) 
         "categories": [
             {"name": item['category__name'], "total": f"{item['total']:.2f}"} 
             for item in summary_by_category
+        ],
+        "payment_methods": [
+            {"name": item['payment_method__name'], "total": f"{item['total']:.2f}"}
+            for item in summary_by_payment
         ]
     }
     insights_text = ai_service.generate_insight(insights_data) # (Precisaremos criar este método na AIService)
@@ -94,6 +100,15 @@ def _format_summary_message(month_name: str, data: dict, insights: str) -> str:
             category_name = category_data.get('name', 'Sem Categoria')
             category_total = Decimal(category_data.get('total', '0.00'))
             response_lines.append(f"• {category_name}: R$ {category_total:.2f}")
+
+    # Adiciona a quebra de gastos por forma de pagamento, se houver
+    payment_summary = data.get('payment_methods')
+    if payment_summary:
+        response_lines.append("\n💳 *Gastos por Forma de Pagamento:*")
+        for pm_data in payment_summary:
+            pm_name = pm_data.get('name', 'N/A')
+            pm_total = Decimal(pm_data.get('total', '0.00'))
+            response_lines.append(f"• {pm_name}: R$ {pm_total:.2f}")
 
     # Adiciona o insight gerado pela IA
     if insights:

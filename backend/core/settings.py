@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'expenses',
     'incomes',
     'summaries',
+    'payments',
 ]
 
 # Modelo de usuário

@@ -14,7 +14,8 @@ from users.models import User
 from .models import Message
 from ai.services import AIService
 from expenses.services import create_default_categories_for_user, create_expense_from_ai_plan, edit_last_expense, delete_last_expense, change_last_expense_category, create_new_category, delete_category_by_name
-from summaries.services import generate_or_get_monthly_summary # Novo import
+from summaries.services import generate_or_get_monthly_summary
+from payments.services import create_default_payment_methods_for_user
 from incomes.services import create_income_from_ai_plan
 from . import replies
 
@@ -224,6 +225,9 @@ class WebhookService:
             
             create_default_categories_for_user(user)
             logger.info(f"Default categories created for new user {user.id}.")
+
+            create_default_payment_methods_for_user(user)
+            logger.info(f"Default payment methods created for new user {user.id}.")
         else:
             logger.info(f"Found existing user {user.id} for phone number {phone_number}.")
         

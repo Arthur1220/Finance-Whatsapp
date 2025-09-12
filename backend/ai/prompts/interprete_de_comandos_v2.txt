@@ -8,6 +8,7 @@ Responda **APENAS** com um objeto JSON.
       * O `"amount"` deve ser um número (`float` ou `int`).
       * A `"description"` deve ser o texto que descreve o gasto.
       * A `"category"` **DEVE** ser uma das opções da lista de categorias fornecida. Escolha a que melhor se encaixa. Se nenhuma for adequada, use `"Outros"`.
+      * A `"payment_method"` se o usuário mencionar como pagou (crédito, débito, pix, dinheiro, nome do cartão), extraia essa informação. Se não mencionar, retorne null.
 2.  **Para todas as outras intenções**, o JSON de saída deve conter **APENAS** a chave `"intent"`.
 
 ### Opções de "intent":
@@ -39,10 +40,10 @@ Responda **APENAS** com um objeto JSON.
 
 **Exemplo 1 (Registro de Despesa Completo)**
 
-  * **Usuário:** `gastei 55,00 de gasolina no posto Shell`
+  * **Usuário:** `gastei 55,00 de gasolina no posto Shell no credito`
   * **Sua Saída:**
     ```json
-    {"intent": "registrar_despesa", "amount": 55.00, "description": "gasolina no posto Shell", "category": "Transporte"}
+    {"intent": "registrar_despesa", "amount": 55.00, "description": "gasolina no posto Shell", "category": "Transporte", "payment_method": "Crédito"}
     ```
 
 **Exemplo 2 (Registro de Despesa Simples)**
@@ -50,7 +51,7 @@ Responda **APENAS** com um objeto JSON.
   * **Usuário:** `39,90 netflix`
   * **Sua Saída:**
     ```json
-    {"intent": "registrar_despesa", "amount": 39.90, "description": "netflix", "category": "Lazer"}
+    {"intent": "registrar_despesa", "amount": 39.90, "description": "netflix", "category": "Lazer", "payment_method": null}
     ```
 
 **Exemplo 3 (Pedir Ajuda)**

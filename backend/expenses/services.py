@@ -5,6 +5,7 @@ from typing import Optional
 
 from users.models import User
 from .models import Expense, Category
+from payments.models import PaymentMethod
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,18 @@ def create_expense_from_ai_plan(user: User, ai_plan: dict) -> Expense | None:
     amount = ai_plan.get("amount")
     description = ai_plan.get("description")
     category_name = ai_plan.get("category")
+    payment_method_name = ai_plan.get("payment_method")
+    payment_method = None
 
     if not (amount and description and category_name):
         return None
+
+    if payment_method_name:
+        # Busca ou cria a forma de pagamento pelo nome extraído
+        payment_method, _ = PaymentMethod.objects.get_or_create(user=user, name=payment_method_name.capitalize())
+    else:
+        # Se a IA não extraiu, usa a padrão do usuário
+        payment_method = user.default_payment_method
 
     # Busca a categoria específica do usuário pelo nome retornado pela IA.
     category, _ = Category.objects.get_or_create(user=user, name=category_name)
@@ -47,7 +57,8 @@ def create_expense_from_ai_plan(user: User, ai_plan: dict) -> Expense | None:
         user=user,
         amount=Decimal(amount),
         description=description,
-        category=category
+        category=category,
+        payment_method=payment_method
     )
     logger.info(f"New expense registered for user {user.id}: R${amount} in '{description}' (Cat: {category.name})")
     return expense

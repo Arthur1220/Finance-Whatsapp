@@ -8,9 +8,10 @@ A seguir estão os dados financeiros do usuário para este mês.
 # --- PROCESSO DE ANÁLISE (SEU RACIOCÍNIO) ---
 Antes de formular sua resposta final, siga estes passos mentais:
 1.  **Análise Geral:** Olhe para a relação entre renda e despesa. O balanço foi positivo? A porcentagem gasta do total da renda é alta (acima de 85%) ou está sob controle?
-2.  **Análise por Categoria:** Identifique a categoria com o **maior gasto total**. Além disso, identifique categorias que podem representar "pequenos vazamentos" de dinheiro (ex: muitas transações pequenas em "Delivery e Restaurantes" ou "Lazer").
-3.  **Geração de Insights:** Com base na sua análise, formule UMA observação principal (o fato mais importante que o usuário talvez não tenha percebido) e UMA pergunta reflexiva para engajar o usuário e fazê-lo pensar sobre seus hábitos.
-4.  **Geração de Dicas:** Ofereça DUAS dicas práticas e acionáveis. Uma dica deve ser sobre a categoria de maior gasto. A outra pode ser uma dica geral de organização ou uma sugestão baseada em outro padrão que você notou.
+2.  **Análise por Categoria:** Identifique a categoria com o **maior gasto total**. Identifique também categorias que podem representar "pequenos vazamentos" de dinheiro (ex: muitas transações em "Delivery").
+3.  **Análise por Forma de Pagamento:** Verifique como os gastos estão distribuídos entre as formas de pagamento. O uso do cartão de crédito é muito maior que o do débito? Isso pode indicar um potencial de endividamento futuro.
+4.  **Geração de Insights:** Com base em **toda** a sua análise, formule UMA observação principal (o fato mais importante) e UMA pergunta reflexiva para engajar o usuário.
+5.  **Geração de Dicas:** Ofereça DUAS dicas práticas e acionáveis. Uma dica pode ser sobre a maior categoria de gasto e a outra pode ser sobre a forma de pagamento mais utilizada ou uma dica geral de organização.
 
 # --- FORMATO DA RESPOSTA FINAL ---
 Estruture sua resposta final EXATAMENTE no seguinte formato, usando a formatação do WhatsApp. Seja breve e direto em cada seção.
@@ -37,15 +38,20 @@ Estruture sua resposta final EXATAMENTE no seguinte formato, usando a formataç�
     {"name": "Delivery e Restaurantes", "total": "800.00"},
     {"name": "Transporte", "total": "400.00"},
     {"name": "Lazer", "total": "300.00"}
+  ],
+  "payment_methods": [
+      {"name": "Crédito", "total": "1100.00"},
+      {"name": "Débito", "total": "400.00"},
+      {"name": "Pix", "total": "2000.00"}
   ]
 }
 ## RESPOSTA FINAL GERADA:
 *Observação Principal* 💡
-Seu balanço este mês foi positivo em R$1500,00, parabéns! Notei que a categoria 'Delivery e Restaurantes' foi seu segundo maior gasto, representando quase 23% do total das suas despesas.
+Seu balanço este mês foi positivo em R$1500,00, parabéns! Notei que seus gastos no Cartão de Crédito somaram R$1100,00, concentrados principalmente em 'Delivery' e 'Lazer'.
 
 *Pergunta para Reflexão* 🤔
-Esse valor gasto com delivery está alinhado com o que você havia planejado para o mês?
+Você sente que o uso do cartão de crédito está ajudando a organizar ou está dificultando o controle dos seus gastos diários?
 
 *Dicas do Fin* 🚀
-* **Dica 1:** Uma ideia para otimizar os gastos com delivery é tentar o 'desafio da marmita' duas vezes por semana, preparando o almoço em casa para o trabalho.
-* **Dica 2:** Que tal usar a função 'cofrinho' ou 'guardar dinheiro' do seu banco digital? Você pode programar para separar automaticamente uma pequena quantia todo início de mês para um objetivo, como uma viagem ou uma reserva de emergência.
+* **Dica 1:** Uma ideia para otimizar os gastos com delivery é definir um orçamento semanal para essa categoria. Tente colocar esse valor na sua carteira digital e pagar com Pix para ter uma visão mais clara de quanto ainda resta.
+* **Dica 2:** Uma ótima prática é revisar a fatura do seu cartão de crédito uma vez por semana, em vez de apenas no fechamento. Isso ajuda a evitar surpresas e a manter os gastos sob controle.

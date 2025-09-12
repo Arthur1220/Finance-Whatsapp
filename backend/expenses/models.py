@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from payments.models import PaymentMethod
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -23,6 +24,7 @@ class Expense(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Valor da despesa")
     description = models.CharField(max_length=255, help_text="Descrição da despesa")
     transaction_date = models.DateTimeField(auto_now_add=True, db_index=True)
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses')
 
     def __str__(self):
         return f"R${self.amount} - {self.description}"
