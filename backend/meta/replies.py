@@ -93,7 +93,7 @@ def get_monthly_summary_reply(user: User) -> str:
 
     # 2. Busca e soma as despesas do mês
     expenses = Expense.objects.filter(user=user, transaction_date__year=now.year, transaction_date__month=now.month)
-    total_expenses = expenses.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
     # 3. Calcula o balanço e a porcentagem
     balance = total_income - total_expenses
