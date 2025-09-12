@@ -117,7 +117,7 @@ rm -rf backend/*/migrations/
 
 # 3. Crie os novos arquivos de migração (localmente)
 cd backend
-python manage.py makemigrations users meta ai expenses incomes summaries
+python manage.py makemigrations users meta ai expenses incomes summaries payments
 cd ..
 
 # 4. Inicie os containers em segundo plano (o '-d' libera o terminal)
