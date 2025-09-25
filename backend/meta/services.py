@@ -187,7 +187,18 @@ class WebhookService:
             response_text = replies.get_monthly_summary_reply(user)
 
         elif intent in replies.TEXT_REPLIES:
-            response_text = replies.TEXT_REPLIES[intent]
+            # --- CORREÇÃO AQUI ---
+            # 1. Pega o "template" da resposta do arquivo replies.
+            response_template = replies.TEXT_REPLIES[intent]
+            
+            # 2. Verifica se o template precisa ser formatado com o nome do usuário.
+            if "{}" in response_template:
+                # Usa um nome padrão "usuário" caso o first_name seja vazio.
+                user_name = user.first_name or "usuário"
+                response_text = response_template.format(user_name)
+            else:
+                # Se não precisar de formatação, usa o texto como está.
+                response_text = response_template
         
         else: # Fallback para 'indefinido'
             response_text = replies.TEXT_REPLIES["indefinido"]
